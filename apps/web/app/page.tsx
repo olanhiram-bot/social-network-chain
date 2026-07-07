@@ -1,14 +1,23 @@
 "use client";
 
-import { useLogin, usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   FormEvent,
+  createElement,
   useEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import { isAddress, padHex, zeroAddress, type Address } from "viem";
+import {
+  useAccount,
+  useDisconnect,
+  useReadContract,
+  useSignMessage,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 
 type User = {
   id: string;
@@ -64,6 +73,76 @@ type WalletAccount = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 const SESSION_KEY = "social-network-session";
 const SESSION_EVENT = "social-network-session-change";
+const ZERO_BIGINT = BigInt(0);
+const EXPLORER_BASE = process.env.NEXT_PUBLIC_CHAIN_EXPLORER_URL ?? "https://sepolia.etherscan.io";
+const optionalAddress = (value: string | undefined) =>
+  value && isAddress(value) ? (value as Address) : undefined;
+const CONTRACTS = {
+  idRegistry: optionalAddress(process.env.NEXT_PUBLIC_ID_REGISTRY_ADDRESS),
+  keyRegistry: optionalAddress(process.env.NEXT_PUBLIC_KEY_REGISTRY_ADDRESS),
+  storageRegistry: optionalAddress(process.env.NEXT_PUBLIC_STORAGE_REGISTRY_ADDRESS),
+};
+const idRegistryAbi = [
+  {
+    type: "function",
+    name: "idOf",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "register",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "recovery", type: "address" }],
+    outputs: [{ name: "id", type: "uint256" }],
+  },
+] as const;
+const keyRegistryAbi = [
+  {
+    type: "function",
+    name: "keyOf",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "bytes32" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "addKey",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "id", type: "uint256" },
+      { name: "key", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+] as const;
+const storageRegistryAbi = [
+  {
+    type: "function",
+    name: "paidUntil",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "unitPrice",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "rent",
+    stateMutability: "payable",
+    inputs: [{ name: "id", type: "uint256" }],
+    outputs: [],
+  },
+] as const;
 
 function subscribeSession(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -112,16 +191,11 @@ export default function Page() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [privyLoading, setPrivyLoading] = useState(false);
-  const privySyncStarted = useRef(false);
-  const {
-    ready: privyReady,
-    authenticated: privyAuthenticated,
-    user: privyUser,
-    getAccessToken,
-  } = usePrivy();
-  const { login: loginWithPrivy } = useLogin();
-  const { wallets: privyWallets } = useWallets();
+  const [walletLoading, setWalletLoading] = useState(false);
+  const walletSyncStarted = useRef(false);
+  const { address, chainId, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
@@ -218,59 +292,41 @@ export default function Page() {
   }, [sessionSnapshot]);
 
   useEffect(() => {
-    if (!privyReady || !privyAuthenticated || session || privySyncStarted.current) {
+    if (!isConnected || !address || !chainId || session || walletSyncStarted.current) {
       return;
     }
 
-    privySyncStarted.current = true;
-    async function syncPrivySession() {
-      setPrivyLoading(true);
+    const walletAddress = address;
+    const walletChainId = chainId;
+    walletSyncStarted.current = true;
+    async function syncWalletSession() {
+      setWalletLoading(true);
       setError("");
 
       try {
-        const accessToken = await getAccessToken();
-        if (!accessToken) {
-          throw new Error("Privy token missing");
-        }
-
-        const linkedUser = privyUser as {
-          email?: { address?: string };
-          google?: { email?: string; name?: string };
-          wallet?: { address?: string };
-        } | null;
-        const email = linkedUser?.email?.address ?? linkedUser?.google?.email;
-        const name =
-          linkedUser?.google?.name ??
-          email?.split("@")[0] ??
-          (privyWallets[0]?.address
-            ? `${privyWallets[0].address.slice(0, 6)}...${privyWallets[0].address.slice(-4)}`
-            : undefined);
-        const walletAddress =
-          privyWallets[0]?.address ?? linkedUser?.wallet?.address;
-
-        const nextSession = await request<Session>("/auth/privy", {
+        const { nonce } = await request<{ nonce: string }>("/auth/siwe/nonce");
+        const message = createSiweMessage({
+          address: walletAddress,
+          chainId: walletChainId,
+          nonce,
+        });
+        const signature = await signMessageAsync({ message });
+        const nextSession = await request<Session>("/auth/siwe/verify", {
           method: "POST",
-          body: JSON.stringify({ accessToken, email, name, walletAddress }),
+          body: JSON.stringify({ message, signature }),
         });
 
         saveStoredSession(nextSession);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Privy login failed");
+        setError(err instanceof Error ? err.message : "Wallet login failed");
       } finally {
-        setPrivyLoading(false);
-        privySyncStarted.current = false;
+        setWalletLoading(false);
+        walletSyncStarted.current = false;
       }
     }
 
-    void syncPrivySession();
-  }, [
-    getAccessToken,
-    privyAuthenticated,
-    privyReady,
-    privyUser,
-    privyWallets,
-    session,
-  ]);
+    void syncWalletSession();
+  }, [address, chainId, isConnected, session, signMessageAsync]);
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -431,31 +487,34 @@ export default function Page() {
     setFriends([]);
     setRequests([]);
     setWallet(null);
+    void disconnect();
   }
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-[#f0f2f5] text-[#1c1e21]">
-        <div className="mx-auto grid min-h-screen w-full max-w-5xl gap-8 px-5 py-8 md:grid-cols-[1fr_396px] md:items-center">
+      <main className="min-h-screen bg-[#f7f5ef] text-[#17211f]">
+        <div className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-5 py-8 md:grid-cols-[1fr_420px] md:items-center">
           <section>
-            <h1 className="text-6xl font-bold tracking-tight text-[#1877f2]">
-              facebook
+            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#d8d1c3] bg-white/70 px-4 py-2 text-sm font-semibold text-[#49625b]">
+              <span className="size-2 rounded-full bg-[#d89d35]" />
+              Red social con identidad onchain
+            </div>
+            <h1 className="max-w-2xl text-5xl font-black tracking-tight text-[#17211f] md:text-7xl">
+              Nexo
             </h1>
-            <p className="mt-4 max-w-xl text-2xl leading-9">
-              Conecta con amigos y el mundo que te rodea en Social Network.
+            <p className="mt-5 max-w-xl text-xl leading-8 text-[#53645f]">
+              Un espacio limpio para publicar, conectar y llevar tu identidad social a Sepolia.
             </p>
           </section>
 
-          <section className="rounded-lg bg-white p-4 shadow-xl">
+          <section className="rounded-2xl border border-[#ded7c9] bg-white p-5 shadow-[0_24px_80px_rgba(32,28,20,0.12)]">
             <AuthForm
               error={error}
               loading={loading}
               mode={mode}
               onModeChange={setMode}
-              onPrivyLogin={loginWithPrivy}
               onSubmit={authenticate}
-              privyLoading={privyLoading}
-              privyReady={privyReady}
+              walletLoading={walletLoading}
             />
           </section>
         </div>
@@ -464,22 +523,22 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f0f2f5] text-[#050505]">
+    <main className="min-h-screen bg-[#f7f5ef] text-[#17211f]">
       <TopBar
         user={session.user}
         onLogout={logout}
         onProfile={() => setProfileOpen(true)}
       />
 
-      <div className="mx-auto grid w-full max-w-[1464px] gap-4 px-4 py-4 lg:grid-cols-[280px_minmax(0,680px)_320px]">
+      <div className="mx-auto grid w-full max-w-[1464px] gap-5 px-4 py-5 lg:grid-cols-[260px_minmax(0,700px)_330px]">
         <LeftRail user={session.user} onProfile={() => setProfileOpen(true)} />
 
         <section className="space-y-4">
           <Stories user={session.user} suggestions={suggestions.slice(0, 4)} />
           <Composer loading={loading} user={session.user} onSubmit={createPost} />
-          {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {posts.length === 0 ? (
-            <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
+            <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
               Todavia no hay publicaciones. Crea la primera.
             </p>
           ) : (
@@ -528,19 +587,19 @@ function TopBar({
   onProfile: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-20 h-14 border-b border-[#dddfe2] bg-white shadow-sm">
-      <div className="flex h-full items-center gap-3 px-4">
-        <div className="grid size-10 place-items-center rounded-full bg-[#1877f2] text-2xl font-bold text-white">
-          f
+    <header className="sticky top-0 z-20 h-16 border-b border-[#ded7c9] bg-[#fffdf8]/90 shadow-sm backdrop-blur">
+      <div className="mx-auto flex h-full max-w-[1464px] items-center gap-3 px-4">
+        <div className="grid size-10 place-items-center rounded-xl bg-[#17211f] text-lg font-black text-[#f2c166]">
+          N
         </div>
         <input
-          className="hidden h-10 w-64 rounded-full bg-[#f0f2f5] px-4 text-sm outline-none md:block"
-          placeholder="Buscar en Facebook"
+          className="hidden h-10 w-64 rounded-xl border border-[#ded7c9] bg-white px-4 text-sm outline-none focus:border-[#49625b] md:block"
+          placeholder="Buscar en Nexo"
         />
         <nav className="mx-auto hidden h-full items-center gap-2 md:flex">
-          {["Inicio", "Video", "Grupos", "Juegos"].map((item) => (
+          {["Inicio", "Red", "Firmas", "Storage"].map((item) => (
             <button
-              className="h-12 rounded-lg px-8 text-sm font-semibold text-[#65676b] hover:bg-[#f0f2f5]"
+              className="h-11 rounded-xl px-6 text-sm font-semibold text-[#65736f] hover:bg-[#ece7dc]"
               key={item}
             >
               {item}
@@ -548,14 +607,14 @@ function TopBar({
           ))}
         </nav>
         <button
-          className="ml-auto flex items-center gap-2 rounded-full px-2 py-1 hover:bg-[#f0f2f5]"
+          className="ml-auto flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-[#ece7dc]"
           onClick={onProfile}
         >
           <Avatar name={user.name} src={user.avatar} size="sm" />
           <span className="hidden text-sm font-semibold sm:block">{user.name}</span>
         </button>
         <button
-          className="rounded-full bg-[#e4e6eb] px-4 py-2 text-sm font-semibold hover:bg-[#d8dadf]"
+          className="rounded-xl bg-[#17211f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#263532]"
           onClick={onLogout}
         >
           Salir
@@ -575,9 +634,9 @@ function LeftRail({
   const items = ["Amigos", "Recuerdos", "Guardados", "Grupos", "Video", "Marketplace"];
 
   return (
-    <aside className="sticky top-18 hidden h-[calc(100vh-72px)] space-y-1 overflow-y-auto lg:block">
+    <aside className="sticky top-20 hidden h-[calc(100vh-80px)] space-y-2 overflow-y-auto lg:block">
       <button
-        className="flex w-full items-center gap-3 rounded-lg p-2 text-left font-semibold hover:bg-[#e4e6eb]"
+        className="flex w-full items-center gap-3 rounded-xl border border-[#ded7c9] bg-white p-3 text-left font-semibold shadow-sm hover:bg-[#fffaf0]"
         onClick={onProfile}
       >
         <Avatar name={user.name} src={user.avatar} size="sm" />
@@ -585,7 +644,7 @@ function LeftRail({
       </button>
       {items.map((item) => (
         <button
-          className="block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-[#e4e6eb]"
+          className="block w-full rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#53645f] hover:bg-[#ece7dc]"
           key={item}
         >
           {item}
@@ -597,13 +656,14 @@ function LeftRail({
 
 function Stories({ user, suggestions }: { user: User; suggestions: User[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       {[user, ...suggestions].slice(0, 5).map((person, index) => (
         <div
-          className="relative h-44 overflow-hidden rounded-xl bg-gradient-to-br from-[#1877f2] to-[#42b72a] p-3 text-white shadow-sm"
+          className="relative h-40 overflow-hidden rounded-2xl border border-[#ded7c9] bg-[#17211f] p-3 text-white shadow-sm"
           key={`${person.id}-${index}`}
         >
           <Avatar name={person.name} src={person.avatar} size="sm" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
           <p className="absolute bottom-3 left-3 right-3 text-sm font-semibold">
             {index === 0 ? "Crear historia" : person.name}
           </p>
@@ -623,16 +683,16 @@ function Composer({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form className="rounded-lg bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+    <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
       <div className="flex gap-3">
         <Avatar name={user.name} src={user.avatar} size="md" />
         <textarea
-          className="min-h-20 flex-1 resize-none rounded-3xl bg-[#f0f2f5] px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#1877f2]/20"
+          className="min-h-24 flex-1 resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
           name="content"
           placeholder={`Que estas pensando, ${user.name}?`}
         />
       </div>
-      <div className="mt-3 flex justify-end border-t border-[#e4e6eb] pt-3">
+      <div className="mt-3 flex justify-end border-t border-[#eee8dc] pt-3">
         <button className={primaryButtonClass} disabled={loading} type="submit">
           {loading ? "Publicando..." : "Publicar"}
         </button>
@@ -651,40 +711,40 @@ function FeedPost({
   onReact: (postId: string) => void;
 }) {
   return (
-    <article className="rounded-lg bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <Avatar name={post.author.name} src={post.author.avatar} size="md" />
         <div>
           <h2 className="text-sm font-semibold">{post.author.name}</h2>
-          <p className="text-xs text-[#65676b]">
+          <p className="text-xs text-[#6d746f]">
             {new Date(post.createdAt).toLocaleString()}
           </p>
         </div>
       </div>
       <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>
       {post.signature && (
-        <p className="mt-3 rounded-md bg-[#f0f2f5] px-3 py-2 text-xs text-[#65676b]">
+        <p className="mt-3 rounded-xl border border-[#e7decd] bg-[#fff8e8] px-3 py-2 text-xs text-[#6d5b32]">
           Firmado por app signer {post.signerAddress?.slice(0, 6)}...
           {post.signerAddress?.slice(-4)}
         </p>
       )}
-      <div className="mt-3 flex justify-between border-t border-[#e4e6eb] pt-3 text-xs text-[#65676b]">
-        <span>{post.reactionCount} Me gusta</span>
+      <div className="mt-3 flex justify-between border-t border-[#eee8dc] pt-3 text-xs text-[#6d746f]">
+        <span>{post.reactionCount} apoyos</span>
         <span>{post.commentCount} comentarios</span>
       </div>
-      <div className="mt-4 flex border-t border-[#e4e6eb] pt-2 text-sm text-[#65676b]">
+      <div className="mt-4 flex border-t border-[#eee8dc] pt-2 text-sm text-[#65736f]">
         <button
-          className={`flex-1 rounded-lg py-2 font-semibold hover:bg-[#f0f2f5] ${
-            post.reactedByMe ? "text-[#1877f2]" : ""
+          className={`flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc] ${
+            post.reactedByMe ? "text-[#b8741a]" : ""
           }`}
           onClick={() => onReact(post.id)}
         >
-          Me gusta
+          Apoyar
         </button>
-        <button className="flex-1 rounded-lg py-2 font-semibold hover:bg-[#f0f2f5]">
+        <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]">
           Comentar
         </button>
-        <button className="flex-1 rounded-lg py-2 font-semibold hover:bg-[#f0f2f5]">
+        <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]">
           Compartir
         </button>
       </div>
@@ -692,10 +752,10 @@ function FeedPost({
         {post.comments.map((comment) => (
           <div className="flex gap-2" key={comment.id}>
             <Avatar name={comment.author.name} src={comment.author.avatar} size="sm" />
-            <div className="rounded-2xl bg-[#f0f2f5] px-3 py-2">
+            <div className="rounded-xl bg-[#f4efe5] px-3 py-2">
               <p className="text-xs font-semibold">{comment.author.name}</p>
               <p className="text-sm">{comment.content}</p>
-              <p className="mt-1 text-[11px] text-[#65676b]">
+              <p className="mt-1 text-[11px] text-[#6d746f]">
                 firmado {comment.signerAddress.slice(0, 6)}...
                 {comment.signerAddress.slice(-4)}
               </p>
@@ -704,7 +764,7 @@ function FeedPost({
         ))}
         <form className="flex gap-2" onSubmit={(event) => onComment(event, post.id)}>
           <input
-            className="min-w-0 flex-1 rounded-full bg-[#f0f2f5] px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1877f2]/20"
+            className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
             name="comment"
             placeholder="Escribe un comentario..."
           />
@@ -738,14 +798,7 @@ function RightRail({
     <aside className="hidden space-y-4 xl:block">
       <Panel title="Cuenta onchain">
         {wallet ? (
-          <div className="space-y-2 rounded-lg bg-white p-3 shadow-sm">
-            <p className="text-xs font-semibold text-[#65676b]">Wallet</p>
-            <p className="break-all text-xs font-semibold">{wallet.address}</p>
-            <p className="pt-2 text-xs font-semibold text-[#65676b]">App signer</p>
-            <p className="break-all text-xs">
-              {wallet.appSigners.find((signer) => signer.active)?.address ?? "Sin signer"}
-            </p>
-          </div>
+          <OnchainIdentity wallet={wallet} />
         ) : (
           <EmptyText>Wallet pendiente.</EmptyText>
         )}
@@ -797,6 +850,175 @@ function RightRail({
   );
 }
 
+function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
+  const { address } = useAccount();
+  const idReady = Boolean(CONTRACTS.idRegistry);
+  const keyReady = Boolean(CONTRACTS.keyRegistry);
+  const storageReady = Boolean(CONTRACTS.storageRegistry);
+  const appSigner = wallet.appSigners.find((signer) => signer.active)?.address as
+    | Address
+    | undefined;
+  const signerKey = appSigner ? padHex(appSigner, { size: 32 }) : undefined;
+  const { data: socialId, refetch: refetchSocialId } = useReadContract({
+    abi: idRegistryAbi,
+    address: CONTRACTS.idRegistry,
+    functionName: "idOf",
+    args: [address ?? zeroAddress],
+    query: { enabled: Boolean(idReady && address) },
+  });
+  const hasSocialId = Boolean(socialId && socialId > ZERO_BIGINT);
+  const { data: keyRegistered, refetch: refetchKey } = useReadContract({
+    abi: keyRegistryAbi,
+    address: CONTRACTS.keyRegistry,
+    functionName: "keyOf",
+    args: [socialId ?? ZERO_BIGINT, signerKey ?? padHex(zeroAddress, { size: 32 })],
+    query: { enabled: Boolean(keyReady && hasSocialId && signerKey) },
+  });
+  const { data: unitPrice } = useReadContract({
+    abi: storageRegistryAbi,
+    address: CONTRACTS.storageRegistry,
+    functionName: "unitPrice",
+    query: { enabled: storageReady },
+  });
+  const { data: paidUntil, refetch: refetchPaidUntil } = useReadContract({
+    abi: storageRegistryAbi,
+    address: CONTRACTS.storageRegistry,
+    functionName: "paidUntil",
+    args: [socialId ?? ZERO_BIGINT],
+    query: { enabled: Boolean(storageReady && hasSocialId) },
+  });
+  const { data: hash, isPending, writeContractAsync } = useWriteContract();
+  const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (!isSuccess) {
+      return;
+    }
+
+    void refetchSocialId();
+    void refetchKey();
+    void refetchPaidUntil();
+  }, [isSuccess, refetchKey, refetchPaidUntil, refetchSocialId]);
+
+  async function registerIdentity() {
+    if (!CONTRACTS.idRegistry) {
+      return;
+    }
+
+    await writeContractAsync({
+      abi: idRegistryAbi,
+      address: CONTRACTS.idRegistry,
+      functionName: "register",
+      args: [zeroAddress],
+    });
+  }
+
+  async function addAppSigner() {
+    const id = socialId;
+    if (!CONTRACTS.keyRegistry || !id || id <= ZERO_BIGINT || !signerKey) {
+      return;
+    }
+
+    await writeContractAsync({
+      abi: keyRegistryAbi,
+      address: CONTRACTS.keyRegistry,
+      functionName: "addKey",
+      args: [id, signerKey],
+    });
+  }
+
+  async function rentStorage() {
+    const id = socialId;
+    if (!CONTRACTS.storageRegistry || !id || id <= ZERO_BIGINT) {
+      return;
+    }
+
+    await writeContractAsync({
+      abi: storageRegistryAbi,
+      address: CONTRACTS.storageRegistry,
+      functionName: "rent",
+      args: [id],
+      value: unitPrice ?? ZERO_BIGINT,
+    });
+  }
+
+  const busy = isPending || confirming;
+  const paidUntilDate =
+    paidUntil && paidUntil > ZERO_BIGINT
+      ? new Date(Number(paidUntil) * 1000).toLocaleDateString()
+      : "Sin storage";
+  const socialIdText =
+    socialId && socialId > ZERO_BIGINT ? socialId.toString() : "No registrado";
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-[#ded7c9] bg-white p-3 shadow-sm">
+      <div>
+        <p className="text-xs font-semibold text-[#6d746f]">Wallet conectada</p>
+        <p className="break-all text-xs font-semibold">{address ?? "Sin wallet"}</p>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-[#6d746f]">Custody wallet</p>
+        <p className="break-all text-xs">{wallet.address}</p>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-[#6d746f]">App signer</p>
+        <p className="break-all text-xs">{appSigner ?? "Sin signer"}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <span className="rounded-xl bg-[#f4efe5] p-2">
+          ID: {socialIdText}
+        </span>
+        <span className="rounded-xl bg-[#f4efe5] p-2">
+          Key: {keyRegistered ? "Registrada" : "Pendiente"}
+        </span>
+        <span className="col-span-2 rounded-xl bg-[#f4efe5] p-2">
+          Storage: {paidUntilDate}
+        </span>
+      </div>
+      <div className="grid gap-2">
+        {(!idReady || !keyReady || !storageReady) && (
+          <p className="rounded-xl bg-[#fff4d6] p-2 text-xs font-semibold text-[#6b4b00]">
+            Configura contratos Sepolia faltantes para habilitar todas las acciones onchain.
+          </p>
+        )}
+        {!hasSocialId && (
+          <button
+            className={primaryButtonClass}
+            disabled={!idReady || !address || busy}
+            onClick={registerIdentity}
+          >
+            Registrar ID
+          </button>
+        )}
+        <button
+          className={secondaryButtonClass}
+          disabled={!keyReady || !hasSocialId || !signerKey || Boolean(keyRegistered) || busy}
+          onClick={addAppSigner}
+        >
+          Registrar signer
+        </button>
+        <button
+          className={secondaryButtonClass}
+          disabled={!storageReady || !hasSocialId || busy}
+          onClick={rentStorage}
+        >
+          Rentar storage
+        </button>
+      </div>
+      {hash && (
+        <a
+          className="block break-all text-xs font-semibold text-[#2f6f62]"
+          href={`${EXPLORER_BASE}/tx/${hash}`}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Ver transaccion
+        </a>
+      )}
+    </div>
+  );
+}
+
 function ProfileModal({
   error,
   loading,
@@ -811,19 +1033,19 @@ function ProfileModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-30 grid place-items-center bg-[#17211f]/50 px-4 backdrop-blur-sm">
       <form
-        className="w-full max-w-xl overflow-hidden rounded-lg bg-white shadow-2xl"
+        className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
         onSubmit={onSubmit}
       >
-        <div className="h-36 bg-gradient-to-r from-[#1877f2] to-[#42b72a]" />
+        <div className="h-36 bg-[#17211f]" />
         <div className="-mt-10 px-5 pb-5">
           <div className="flex items-end justify-between gap-4">
             <div className="flex items-end gap-4">
               <Avatar name={session.user.name} src={session.user.avatar} size="lg" />
               <div className="pb-2">
                 <h2 className="text-2xl font-bold">{session.user.name}</h2>
-                <p className="text-sm text-[#65676b]">{session.user.email}</p>
+                <p className="text-sm text-[#6d746f]">{session.user.email}</p>
               </div>
             </div>
             <button className={secondaryButtonClass} type="button" onClick={onClose}>
@@ -876,34 +1098,28 @@ function AuthForm({
   loading,
   mode,
   onModeChange,
-  onPrivyLogin,
   onSubmit,
-  privyLoading,
-  privyReady,
+  walletLoading,
 }: {
   error: string;
   loading: boolean;
   mode: "login" | "register";
   onModeChange: (mode: "login" | "register") => void;
-  onPrivyLogin: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  privyLoading: boolean;
-  privyReady: boolean;
+  walletLoading: boolean;
 }) {
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
-      <button
-        className={`${primaryButtonClass} w-full bg-[#1877f2]`}
-        disabled={!privyReady || privyLoading}
-        onClick={onPrivyLogin}
-        type="button"
-      >
-        {privyLoading ? "Conectando..." : "Continuar con Privy"}
-      </button>
-      <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[#65676b]">
-        <span className="h-px flex-1 bg-[#dadde1]" />
+      <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
+        {createElement("appkit-button")}
+      </div>
+      {walletLoading && (
+        <p className="text-center text-sm text-[#6d746f]">Firmando acceso...</p>
+      )}
+      <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[#6d746f]">
+        <span className="h-px flex-1 bg-[#ded7c9]" />
         o
-        <span className="h-px flex-1 bg-[#dadde1]" />
+        <span className="h-px flex-1 bg-[#ded7c9]" />
       </div>
       {mode === "register" && (
         <input className={inputClass} name="name" placeholder="Nombre" required />
@@ -921,9 +1137,9 @@ function AuthForm({
       <button className={`${primaryButtonClass} w-full`} disabled={loading}>
         {loading ? "Enviando..." : mode === "login" ? "Iniciar sesion" : "Crear cuenta"}
       </button>
-      <div className="border-t border-[#dadde1] pt-4 text-center">
+      <div className="border-t border-[#ded7c9] pt-4 text-center">
         <button
-          className="rounded-md bg-[#42b72a] px-4 py-3 text-sm font-bold text-white hover:bg-[#36a420]"
+          className="rounded-xl bg-[#2f6f62] px-4 py-3 text-sm font-bold text-white hover:bg-[#285f54]"
           type="button"
           onClick={() => onModeChange(mode === "login" ? "register" : "login")}
         >
@@ -937,7 +1153,7 @@ function AuthForm({
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="px-2 text-base font-semibold text-[#65676b]">{title}</h2>
+      <h2 className="px-2 text-sm font-black uppercase tracking-wide text-[#65736f]">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>
   );
@@ -953,7 +1169,7 @@ function PersonRow({ user }: { user: User | Pick<User, "name" | "avatar"> }) {
 }
 
 function EmptyText({ children }: { children: React.ReactNode }) {
-  return <p className="px-2 text-sm text-[#65676b]">{children}</p>;
+  return <p className="px-2 text-sm text-[#6d746f]">{children}</p>;
 }
 
 function Avatar({
@@ -975,7 +1191,7 @@ function Avatar({
     return (
       <img
         alt=""
-        className={`${sizeClass} shrink-0 rounded-full bg-[#e4e6eb] object-cover`}
+        className={`${sizeClass} shrink-0 rounded-xl bg-[#ece7dc] object-cover`}
         src={src}
       />
     );
@@ -983,7 +1199,7 @@ function Avatar({
 
   return (
     <div
-      className={`${sizeClass} grid shrink-0 place-items-center rounded-full bg-[#1877f2] font-bold text-white`}
+      className={`${sizeClass} grid shrink-0 place-items-center rounded-xl bg-[#17211f] font-bold text-[#f2c166]`}
     >
       {name.slice(0, 1).toUpperCase()}
     </div>
@@ -991,10 +1207,33 @@ function Avatar({
 }
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-[#dddfe2] bg-white px-3 py-3 text-sm outline-none focus:border-[#1877f2] focus:ring-2 focus:ring-[#1877f2]/10";
+  "mt-1 w-full rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-3 py-3 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10";
 
 const primaryButtonClass =
-  "rounded-md bg-[#1877f2] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5] disabled:cursor-not-allowed disabled:opacity-60";
+  "rounded-xl bg-[#17211f] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#263532] disabled:cursor-not-allowed disabled:opacity-60";
 
 const secondaryButtonClass =
-  "rounded-md bg-[#e4e6eb] px-3 py-2 text-sm font-bold text-[#050505] hover:bg-[#d8dadf]";
+  "rounded-xl bg-[#ece7dc] px-3 py-2 text-sm font-bold text-[#17211f] hover:bg-[#ded7c9]";
+
+function createSiweMessage({
+  address,
+  chainId,
+  nonce,
+}: {
+  address: string;
+  chainId: number;
+  nonce: string;
+}) {
+  const domain = window.location.host;
+  const uri = window.location.origin;
+  return `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+Sign in to Social Network.
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainId}
+Nonce: ${nonce}
+Issued At: ${new Date().toISOString()}`;
+}

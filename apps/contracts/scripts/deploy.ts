@@ -1,4 +1,6 @@
 import hre from 'hardhat';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
@@ -15,6 +17,22 @@ async function main() {
   const StorageRegistry = await hre.ethers.getContractFactory('SocialStorageRegistry');
   const storage = await StorageRegistry.deploy(await ids.getAddress(), 0n);
   await storage.waitForDeployment();
+
+  const deployment = {
+    network: hre.network.name,
+    chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
+    contracts: {
+      idRegistry: await ids.getAddress(),
+      keyRegistry: await keys.getAddress(),
+      storageRegistry: await storage.getAddress(),
+    },
+  };
+
+  await mkdir('deployments', { recursive: true });
+  await writeFile(
+    join('deployments', `${hre.network.name}.json`),
+    `${JSON.stringify(deployment, null, 2)}\n`,
+  );
 
   console.log({
     idRegistry: await ids.getAddress(),

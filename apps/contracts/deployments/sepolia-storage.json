@@ -1,0 +1,6 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "idRegistry": "0xA9bCF69522AABd0172209015cF1aFaeaab6e9472",
+  "storageRegistry": "0xb1De92E245362d2b379A9bA6Ab0e59979095319c"
+}
