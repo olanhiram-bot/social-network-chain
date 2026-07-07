@@ -1,0 +1,115 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/home/daniel/Documentos/GitHub/social-network/apps/contracts/contracts/SocialIdRegistry.sol": {
+      "lastModificationDate": 1783111626309,
+      "contentHash": "488488772a8aaac37f94d51b170042b2",
+      "sourceName": "contracts/SocialIdRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "SocialIdRegistry"
+      ]
+    },
+    "/home/daniel/Documentos/GitHub/social-network/apps/contracts/contracts/SocialKeyRegistry.sol": {
+      "lastModificationDate": 1783111626465,
+      "contentHash": "a2346748022e8d0030b3076573c77022",
+      "sourceName": "contracts/SocialKeyRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "ISocialIdRegistry",
+        "SocialKeyRegistry"
+      ]
+    },
+    "/home/daniel/Documentos/GitHub/social-network/apps/contracts/contracts/SocialStorageRegistry.sol": {
+      "lastModificationDate": 1783111626652,
+      "contentHash": "304b213fd65bf34a99f1ed4f874ca491",
+      "sourceName": "contracts/SocialStorageRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "IStorageIdRegistry",
+        "SocialStorageRegistry"
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@social-network/types": ["packages/types/index.ts"],
+      "@social-network/ui": ["packages/ui/index.ts"]
+    }
+  }
+}

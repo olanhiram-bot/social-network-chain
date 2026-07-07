@@ -1,0 +1,17 @@
+{
+  "name": "contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:local": "hardhat run scripts/deploy.ts",
+    "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
+    "deploy:arbitrum": "hardhat run scripts/deploy.ts --network arbitrum"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.1.2",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.27.2",
+    "typescript": "^5.9.3"
+  }
+}
