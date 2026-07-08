@@ -110,6 +110,42 @@
         "IStorageIdRegistry",
         "SocialStorageRegistry"
       ]
+    },
+    "/home/daniel/Documentos/GitHub/social-network/apps/contracts/contracts/SocialActionRegistry.sol": {
+      "lastModificationDate": 1783461355748,
+      "contentHash": "7be1a118d87d2e928e7cd769cee1f934",
+      "sourceName": "contracts/SocialActionRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "SocialActionRegistry"
+      ]
     }
   }
 }
