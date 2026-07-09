@@ -2,8 +2,11 @@
 
 import {
   ChangeEvent,
+  Children,
   FormEvent,
   createElement,
+  type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -25,6 +28,7 @@ type User = {
   name: string;
   email: string;
   avatar: string | null;
+  cover: string | null;
   bio: string | null;
 };
 
@@ -39,13 +43,32 @@ type Post = {
   content: string;
   mediaUrl: string | null;
   mediaType: "IMAGE" | "VIDEO" | "STREAM" | null;
+  audience: "PUBLIC" | "FRIENDS" | "ONLY_ME";
   createdAt: string;
   signerAddress: string | null;
   messageHash: string | null;
   signature: string | null;
   author: Pick<User, "id" | "name" | "avatar">;
+  page: {
+    id: string;
+    name: string;
+    avatar: string | null;
+    category: string | null;
+  } | null;
+  group: {
+    id: string;
+    name: string | null;
+  } | null;
+  sharedPost: {
+    id: string;
+    content: string | null;
+    mediaUrl: string | null;
+    mediaType: "IMAGE" | "VIDEO" | "STREAM" | null;
+    author: Pick<User, "id" | "name" | "avatar">;
+  } | null;
   reactionCount: number;
   commentCount: number;
+  shareCount: number;
   reactedByMe: boolean;
   comments: {
     id: string;
@@ -76,9 +99,158 @@ type LiveSession = {
   startedAt: string;
   endedAt: string | null;
   recordingUrl: string | null;
+  latestFrameUrl: string | null;
   hostId: string;
   hostName: string;
   hostAvatar: string | null;
+};
+
+type LiveChatMessage = {
+  id: string;
+  liveId: string;
+  content: string;
+  offsetMs: number;
+  createdAt: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string | null;
+};
+
+type SearchResults = {
+  query: string;
+  people: { id: string; name: string; avatar: string | null; bio: string | null }[];
+  pages: Pick<SocialPage, "id" | "name" | "category" | "description" | "avatar" | "cover">[];
+  groups: Pick<SocialGroup, "id" | "name" | "description" | "privacy" | "cover">[];
+  posts: {
+    id: string;
+    content: string;
+    mediaUrl: string | null;
+    mediaType: "IMAGE" | "VIDEO" | "STREAM" | null;
+    createdAt: string;
+    authorId: string;
+    authorName: string;
+    authorAvatar: string | null;
+  }[];
+  lives: {
+    id: string;
+    title: string;
+    status: "LIVE" | "ENDED";
+    startedAt: string;
+    latestFrameUrl: string | null;
+    recordingUrl: string | null;
+    hostId: string;
+    hostName: string;
+    hostAvatar: string | null;
+  }[];
+};
+
+type MarketplaceProduct = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  priceCents: number;
+  location: string;
+  imageUrl: string | null;
+  createdAt: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar: string | null;
+};
+
+type SocialEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string;
+  startsAt: string;
+  imageUrl: string | null;
+  hostId: string;
+  hostName: string;
+  hostAvatar: string | null;
+  pageId: string | null;
+  pageName: string | null;
+  groupId: string | null;
+  groupName: string | null;
+  goingCount: number;
+  interestedCount: number;
+  myStatus: "GOING" | "INTERESTED" | null;
+};
+
+type PublicProfile = {
+  user: User;
+  relationship: "SELF" | "FRIEND" | "REQUEST_SENT" | "REQUEST_RECEIVED" | "NONE";
+  posts: Post[];
+  lives: LiveSession[];
+};
+
+type SocialPage = {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  avatar: string | null;
+  cover: string | null;
+  createdAt: string;
+  ownerId: string;
+  ownerName: string;
+  ownerAvatar: string | null;
+  followerCount: number;
+  followedByMe: boolean;
+};
+
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  entityType: string | null;
+  entityId: string | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+type NotificationState = {
+  unreadCount: number;
+  notifications: NotificationItem[];
+};
+
+type SocialGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+  privacy: "PUBLIC" | "PRIVATE";
+  cover: string | null;
+  createdAt: string;
+  ownerId: string;
+  ownerName: string;
+  ownerAvatar: string | null;
+  memberCount: number;
+  joinedByMe: boolean;
+  myRole: string | null;
+};
+
+type Conversation = {
+  id: string;
+  updatedAt: string;
+  peerId: string;
+  peerName: string;
+  peerAvatar: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+};
+
+type DirectMessage = {
+  id: string;
+  conversationId: string;
+  content: string;
+  signerAddress: string | null;
+  messageHash: string | null;
+  signature: string | null;
+  createdAt: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string | null;
 };
 
 type FriendRequest = {
@@ -98,16 +270,35 @@ type WalletAccount = {
   }[];
 };
 
-type AppView = "home" | "profile" | "friends" | "lives";
+type AppView = "home" | "profile" | "friends" | "lives" | "pages" | "pageDetail" | "groups" | "groupDetail" | "messages" | "publicProfile" | "search" | "marketplace" | "events";
+type EditableTarget =
+  | { kind: "post"; id: string; title: string; value: string }
+  | { kind: "comment"; id: string; title: string; value: string }
+  | { kind: "story"; id: string; title: string; value: string }
+  | { kind: "live"; id: string; title: string; value: string };
+type DeleteTarget = {
+  id: string;
+  kind: "post" | "comment" | "story" | "live";
+  title: string;
+  description: string;
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 const SESSION_KEY = "social-network-session";
 const SESSION_EVENT = "social-network-session-change";
+const SEARCH_HISTORY_KEY = "social-network-search-history";
 const ZERO_BIGINT = BigInt(0);
 const EXPLORER_BASE = process.env.NEXT_PUBLIC_CHAIN_EXPLORER_URL ?? "https://sepolia.etherscan.io";
 const optionalAddress = (value: string | undefined) =>
   value && isAddress(value) ? (value as Address) : undefined;
 const mediaSrc = (url: string) => (url.startsWith("/") ? `${API_URL}${url}` : url);
+const fallbackApiUrl = API_URL.includes("127.0.0.1")
+  ? API_URL.replace("127.0.0.1", "localhost")
+  : API_URL.includes("localhost")
+    ? API_URL.replace("localhost", "127.0.0.1")
+    : "";
+const isActiveStory = (story: Pick<Story, "expiresAt">, now = Date.now()) =>
+  new Date(story.expiresAt).getTime() > now;
 const CONTRACTS = {
   idRegistry: optionalAddress(process.env.NEXT_PUBLIC_ID_REGISTRY_ADDRESS),
   keyRegistry: optionalAddress(process.env.NEXT_PUBLIC_KEY_REGISTRY_ADDRESS),
@@ -218,12 +409,41 @@ export default function Page() {
   const [stories, setStories] = useState<Story[]>([]);
   const [lives, setLives] = useState<LiveSession[]>([]);
   const [profileLives, setProfileLives] = useState<LiveSession[]>([]);
+  const [liveMessages, setLiveMessages] = useState<Record<string, LiveChatMessage[]>>({});
+  const [pages, setPages] = useState<SocialPage[]>([]);
+  const [myPages, setMyPages] = useState<SocialPage[]>([]);
+  const [groups, setGroups] = useState<SocialGroup[]>([]);
+  const [myGroups, setMyGroups] = useState<SocialGroup[]>([]);
+  const [notifications, setNotifications] = useState<NotificationState>({ unreadCount: 0, notifications: [] });
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+    try {
+      return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [marketplaceProducts, setMarketplaceProducts] = useState<MarketplaceProduct[]>([]);
+  const [events, setEvents] = useState<SocialEvent[]>([]);
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [wallet, setWallet] = useState<WalletAccount | null>(null);
+  const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
+  const [selectedPage, setSelectedPage] = useState<SocialPage | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<SocialGroup | null>(null);
   const [view, setView] = useState<AppView>("home");
   const [error, setError] = useState("");
+  const [editTarget, setEditTarget] = useState<EditableTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [shareTarget, setShareTarget] = useState<Post | null>(null);
+  const [reportTarget, setReportTarget] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const walletSyncStarted = useRef(false);
@@ -231,8 +451,28 @@ export default function Page() {
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
 
+  async function apiFetch(path: string, init: RequestInit = {}) {
+    const primaryUrl = `${API_URL}${path}`;
+
+    try {
+      return await fetch(primaryUrl, init);
+    } catch {
+      if (fallbackApiUrl && fallbackApiUrl !== API_URL) {
+        try {
+          return await fetch(`${fallbackApiUrl}${path}`, init);
+        } catch {
+          // Keep the clearer primary URL in the user-facing error below.
+        }
+      }
+
+      throw new Error(
+        `No se pudo conectar al API en ${primaryUrl}. Revisa que el backend este levantado en el puerto 3000.`,
+      );
+    }
+  }
+
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await apiFetch(path, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -276,7 +516,7 @@ export default function Page() {
 
     const form = new FormData();
     form.append("file", file);
-    const response = await fetch(`${API_URL}/media`, {
+    const response = await apiFetch("/media", {
       method: "POST",
       headers: { Authorization: `Bearer ${session.accessToken}` },
       body: form,
@@ -295,12 +535,20 @@ export default function Page() {
       return;
     }
 
-    const [nextPosts, nextStories, nextLives, nextProfileLives, nextSuggestions, nextFriends, nextRequests, nextWallet] =
+    const [nextPosts, nextStories, nextLives, nextProfileLives, nextPages, nextMyPages, nextGroups, nextMyGroups, nextNotifications, nextConversations, nextProducts, nextEvents, nextSuggestions, nextFriends, nextRequests, nextWallet] =
       await Promise.all([
       authed<Post[]>("/posts"),
         authed<Story[]>("/stories"),
         authed<LiveSession[]>("/lives"),
         authed<LiveSession[]>("/lives/mine"),
+        authed<SocialPage[]>("/pages"),
+        authed<SocialPage[]>("/pages/mine"),
+        authed<SocialGroup[]>("/groups"),
+        authed<SocialGroup[]>("/groups/mine"),
+        authed<NotificationState>("/notifications"),
+        authed<Conversation[]>("/messages/conversations"),
+        authed<MarketplaceProduct[]>("/marketplace"),
+        authed<SocialEvent[]>("/events"),
         authed<User[]>("/friends/suggestions"),
         authed<User[]>("/friends"),
         authed<FriendRequest[]>("/friends/requests"),
@@ -311,10 +559,36 @@ export default function Page() {
     setStories(nextStories);
     setLives(nextLives);
     setProfileLives(nextProfileLives);
+    setPages(nextPages);
+    setMyPages(nextMyPages);
+    setGroups(nextGroups);
+    setMyGroups(nextMyGroups);
+    setNotifications(nextNotifications);
+    setConversations(nextConversations);
+    setMarketplaceProducts(nextProducts);
+    setEvents(nextEvents);
+    setSelectedPage((current) => nextPages.find((page) => page.id === current?.id) ?? current);
+    setSelectedGroup((current) => nextGroups.find((group) => group.id === current?.id) ?? current);
     setSuggestions(nextSuggestions);
     setFriends(nextFriends);
     setRequests(nextRequests);
     setWallet(nextWallet);
+    await refreshLiveMessages([...nextLives, ...nextProfileLives]);
+  }
+
+  async function refreshLiveMessages(nextLives: LiveSession[]) {
+    const uniqueLives = Array.from(new Map(nextLives.map((live) => [live.id, live])).values());
+    if (!uniqueLives.length) {
+      return;
+    }
+
+    const entries = await Promise.all(
+      uniqueLives.map(async (live) => [
+        live.id,
+        await authed<LiveChatMessage[]>(`/lives/${live.id}/messages`),
+      ] as const),
+    );
+    setLiveMessages((current) => ({ ...current, ...Object.fromEntries(entries) }));
   }
 
   useEffect(() => {
@@ -326,12 +600,20 @@ export default function Page() {
 
     async function loadSocialData() {
       try {
-        const [nextPosts, nextStories, nextLives, nextProfileLives, nextSuggestions, nextFriends, nextRequests, nextWallet] =
+        const [nextPosts, nextStories, nextLives, nextProfileLives, nextPages, nextMyPages, nextGroups, nextMyGroups, nextNotifications, nextConversations, nextProducts, nextEvents, nextSuggestions, nextFriends, nextRequests, nextWallet] =
           await Promise.all([
           authed<Post[]>("/posts"),
             authed<Story[]>("/stories"),
             authed<LiveSession[]>("/lives"),
             authed<LiveSession[]>("/lives/mine"),
+            authed<SocialPage[]>("/pages"),
+            authed<SocialPage[]>("/pages/mine"),
+            authed<SocialGroup[]>("/groups"),
+            authed<SocialGroup[]>("/groups/mine"),
+            authed<NotificationState>("/notifications"),
+            authed<Conversation[]>("/messages/conversations"),
+            authed<MarketplaceProduct[]>("/marketplace"),
+            authed<SocialEvent[]>("/events"),
             authed<User[]>("/friends/suggestions"),
             authed<User[]>("/friends"),
             authed<FriendRequest[]>("/friends/requests"),
@@ -343,10 +625,21 @@ export default function Page() {
           setStories(nextStories);
           setLives(nextLives);
           setProfileLives(nextProfileLives);
+          setPages(nextPages);
+          setMyPages(nextMyPages);
+          setGroups(nextGroups);
+          setMyGroups(nextMyGroups);
+          setNotifications(nextNotifications);
+          setConversations(nextConversations);
+          setMarketplaceProducts(nextProducts);
+          setEvents(nextEvents);
+          setSelectedPage((current) => nextPages.find((page) => page.id === current?.id) ?? current);
+          setSelectedGroup((current) => nextGroups.find((group) => group.id === current?.id) ?? current);
           setSuggestions(nextSuggestions);
           setFriends(nextFriends);
           setRequests(nextRequests);
           setWallet(nextWallet);
+          void refreshLiveMessages([...nextLives, ...nextProfileLives]);
         }
       } catch (err) {
         if (!cancelled) {
@@ -360,6 +653,119 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
+  }, [sessionSnapshot]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const source = new EventSource(`${API_URL}/realtime?token=${encodeURIComponent(session.accessToken)}`);
+    source.addEventListener("feed_updated", () => {
+      void authed<Post[]>("/posts").then(setPosts).catch(() => undefined);
+    });
+    source.addEventListener("pages_updated", () => {
+      void Promise.all([authed<SocialPage[]>("/pages"), authed<SocialPage[]>("/pages/mine")])
+        .then(([nextPages, nextMyPages]) => {
+          setPages(nextPages);
+          setMyPages(nextMyPages);
+          setSelectedPage((current) => nextPages.find((page) => page.id === current?.id) ?? current);
+        })
+        .catch(() => undefined);
+    });
+    source.addEventListener("groups_updated", () => {
+      void Promise.all([authed<SocialGroup[]>("/groups"), authed<SocialGroup[]>("/groups/mine")])
+        .then(([nextGroups, nextMyGroups]) => {
+          setGroups(nextGroups);
+          setMyGroups(nextMyGroups);
+          setSelectedGroup((current) => nextGroups.find((group) => group.id === current?.id) ?? current);
+        })
+        .catch(() => undefined);
+    });
+    source.addEventListener("notifications_updated", () => {
+      void authed<NotificationState>("/notifications").then(setNotifications).catch(() => undefined);
+    });
+    source.addEventListener("messages_updated", () => {
+      void authed<Conversation[]>("/messages/conversations").then(setConversations).catch(() => undefined);
+      if (activeConversation) {
+        void authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`)
+          .then(setDirectMessages)
+          .catch(() => undefined);
+      }
+    });
+    source.addEventListener("events_updated", () => {
+      void authed<SocialEvent[]>("/events").then(setEvents).catch(() => undefined);
+    });
+
+    return () => source.close();
+  }, [sessionSnapshot, activeConversation?.id]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const id = window.setInterval(async () => {
+      try {
+        const nextLives = await authed<LiveSession[]>("/lives");
+        setLives(nextLives);
+      } catch {
+        // Keep the current live list if a polling request fails.
+      }
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [sessionSnapshot]);
+
+  useEffect(() => {
+    if (!session || view !== "messages") {
+      return;
+    }
+
+    const id = window.setInterval(async () => {
+      try {
+        setConversations(await authed<Conversation[]>("/messages/conversations"));
+        if (activeConversation) {
+          setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
+        }
+      } catch {
+        // Keep current messenger state if refresh fails.
+      }
+    }, 3000);
+
+    return () => window.clearInterval(id);
+  }, [sessionSnapshot, view, activeConversation?.id]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const id = window.setInterval(async () => {
+      try {
+        setPosts(await authed<Post[]>("/posts"));
+      } catch {
+        // Keep current feed if refresh fails.
+      }
+    }, 3000);
+
+    return () => window.clearInterval(id);
+  }, [sessionSnapshot]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const id = window.setInterval(async () => {
+      try {
+        setNotifications(await authed<NotificationState>("/notifications"));
+      } catch {
+        // Keep the current notification list if polling fails.
+      }
+    }, 10_000);
+
+    return () => window.clearInterval(id);
   }, [sessionSnapshot]);
 
   useEffect(() => {
@@ -461,6 +867,9 @@ export default function Page() {
             content,
             mediaUrl: mediaUrl || undefined,
             mediaType: mediaUrl ? mediaType : undefined,
+            pageId: String(form.get("pageId") || "") || undefined,
+            groupId: String(form.get("groupId") || "") || undefined,
+            audience: String(form.get("audience") || "PUBLIC"),
           }),
         }),
         ...posts,
@@ -514,6 +923,370 @@ export default function Page() {
     }
   }
 
+  async function createPage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const avatarFile = form.get("avatarFile");
+    const coverFile = form.get("coverFile");
+    let avatar = "";
+    let cover = "";
+
+    setLoading(true);
+    setError("");
+
+    try {
+      if (avatarFile instanceof File && avatarFile.size > 0) {
+        avatar = (await uploadMedia(avatarFile)).url;
+      }
+
+      if (coverFile instanceof File && coverFile.size > 0) {
+        cover = (await uploadMedia(coverFile)).url;
+      }
+
+      const page = await authed<SocialPage>("/pages", {
+        method: "POST",
+        body: JSON.stringify({
+          name: String(form.get("name")).trim(),
+          category: String(form.get("category")).trim(),
+          description: String(form.get("description")).trim() || undefined,
+          avatar: avatar || undefined,
+          cover: cover || undefined,
+        }),
+      });
+
+      setPages([page, ...pages]);
+      setMyPages([page, ...myPages]);
+      formElement.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updatePage(event: FormEvent<HTMLFormElement>, page: SocialPage) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const avatarFile = form.get("avatarFile");
+    const coverFile = form.get("coverFile");
+    let avatar = page.avatar || "";
+    let cover = page.cover || "";
+
+    setLoading(true);
+    setError("");
+
+    try {
+      if (avatarFile instanceof File && avatarFile.size > 0) {
+        avatar = (await uploadMedia(avatarFile)).url;
+      }
+
+      if (coverFile instanceof File && coverFile.size > 0) {
+        cover = (await uploadMedia(coverFile)).url;
+      }
+
+      const updated = await authed<SocialPage>(`/pages/${page.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: String(form.get("name")).trim(),
+          category: String(form.get("category")).trim(),
+          description: String(form.get("description")).trim() || undefined,
+          avatar: avatar || undefined,
+          cover: cover || undefined,
+        }),
+      });
+
+      setSelectedPage(updated);
+      setPages((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setMyPages((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function togglePageFollow(pageId: string) {
+    setError("");
+
+    try {
+      await authed(`/pages/${pageId}/follow`, { method: "POST" });
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  function openPage(page: SocialPage) {
+    setSelectedPage(page);
+    setView("pageDetail");
+  }
+
+  async function createGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const coverFile = form.get("coverFile");
+    let cover = "";
+
+    setLoading(true);
+    setError("");
+    try {
+      if (coverFile instanceof File && coverFile.size > 0) {
+        cover = (await uploadMedia(coverFile)).url;
+      }
+      const group = await authed<SocialGroup>("/groups", {
+        method: "POST",
+        body: JSON.stringify({
+          name: String(form.get("name")).trim(),
+          description: String(form.get("description")).trim() || undefined,
+          privacy: String(form.get("privacy") || "PUBLIC"),
+          cover: cover || undefined,
+        }),
+      });
+      setGroups([group, ...groups]);
+      setMyGroups([group, ...myGroups]);
+      formElement.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createMarketplaceProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const imageFile = form.get("imageFile");
+    let imageUrl = "";
+
+    setLoading(true);
+    setError("");
+    try {
+      if (imageFile instanceof File && imageFile.size > 0) {
+        imageUrl = (await uploadMedia(imageFile)).url;
+      }
+      const product = await authed<MarketplaceProduct>("/marketplace", {
+        method: "POST",
+        body: JSON.stringify({
+          title: String(form.get("title")).trim(),
+          category: String(form.get("category")).trim() || "General",
+          description: String(form.get("description")).trim() || undefined,
+          priceCents: Math.round(Number(form.get("price") || 0) * 100),
+          location: String(form.get("location")).trim(),
+          imageUrl: imageUrl || undefined,
+        }),
+      });
+      setMarketplaceProducts([product, ...marketplaceProducts]);
+      formElement.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const imageFile = form.get("imageFile");
+    let imageUrl = "";
+
+    setLoading(true);
+    setError("");
+    try {
+      if (imageFile instanceof File && imageFile.size > 0) {
+        imageUrl = (await uploadMedia(imageFile)).url;
+      }
+      const socialEvent = await authed<SocialEvent>("/events", {
+        method: "POST",
+        body: JSON.stringify({
+          title: String(form.get("title")).trim(),
+          description: String(form.get("description")).trim() || undefined,
+          location: String(form.get("location")).trim(),
+          startsAt: new Date(String(form.get("startsAt"))).toISOString(),
+          imageUrl: imageUrl || undefined,
+          pageId: String(form.get("pageId") || "") || undefined,
+          groupId: String(form.get("groupId") || "") || undefined,
+        }),
+      });
+      if (socialEvent) setEvents([socialEvent, ...events]);
+      formElement.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rsvpEvent(eventId: string, status: "GOING" | "INTERESTED") {
+    setError("");
+    try {
+      await authed(`/events/${eventId}/rsvp`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      });
+      setEvents(await authed<SocialEvent[]>("/events"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function inviteToEvent(event: FormEvent<HTMLFormElement>, eventId: string) {
+    event.preventDefault();
+    const userId = String(new FormData(event.currentTarget).get("userId") || "");
+    if (!userId) return;
+    setError("");
+    try {
+      await authed(`/events/${eventId}/invites`, {
+        method: "POST",
+        body: JSON.stringify({ userIds: [userId] }),
+      });
+      event.currentTarget.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function toggleGroupJoin(group: SocialGroup) {
+    try {
+      await authed(`/groups/${group.id}/${group.joinedByMe ? "leave" : "join"}`, {
+        method: group.joinedByMe ? "DELETE" : "POST",
+      });
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  function openGroup(group: SocialGroup) {
+    setSelectedGroup(group);
+    setView("groupDetail");
+  }
+
+  async function markNotificationsRead() {
+    try {
+      await authed("/notifications/read", { method: "PATCH" });
+      setNotifications((current) => ({
+        unreadCount: 0,
+        notifications: current.notifications.map((notification) => ({
+          ...notification,
+          readAt: notification.readAt ?? new Date().toISOString(),
+        })),
+      }));
+    } catch {
+      // Non-critical; notifications will refresh with the next data load.
+    }
+  }
+
+  async function openNotification(notification: NotificationItem) {
+    if (!notification.entityType || !notification.entityId) {
+      return;
+    }
+
+    setError("");
+    try {
+      if (notification.entityType === "Page") {
+        openPage(await authed<SocialPage>(`/pages/${notification.entityId}`));
+        return;
+      }
+      if (notification.entityType === "Group") {
+        openGroup(await authed<SocialGroup>(`/groups/${notification.entityId}`));
+        return;
+      }
+      if (notification.entityType === "User") {
+        await openUserProfile(notification.entityId);
+        return;
+      }
+      if (notification.entityType === "Conversation") {
+        const nextConversations = await authed<Conversation[]>("/messages/conversations");
+        setConversations(nextConversations);
+        const conversation = nextConversations.find((item) => item.id === notification.entityId);
+        if (conversation) {
+          await selectConversation(conversation);
+        }
+        setView("messages");
+        return;
+      }
+      if (notification.entityType === "FriendRequest") {
+        setView("friends");
+        return;
+      }
+      if (notification.entityType === "Post" || notification.entityType === "DirectMessage") {
+        setView(notification.entityType === "Post" ? "home" : "messages");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function runSearch(query: string) {
+    const clean = query.trim();
+    if (clean.length < 2) {
+      return;
+    }
+
+    setError("");
+    try {
+      const results = await authed<SearchResults>(`/search?q=${encodeURIComponent(clean)}`);
+      const history = [clean, ...searchHistory.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 8);
+      setSearchResults(results);
+      setSearchHistory(history);
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+      setView("search");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function openConversation(peerId: string) {
+    setError("");
+    try {
+      const { id } = await authed<{ id: string }>("/messages/conversations", {
+        method: "POST",
+        body: JSON.stringify({ peerId }),
+      });
+      const nextConversations = await authed<Conversation[]>("/messages/conversations");
+      const conversation = nextConversations.find((item) => item.id === id) ?? null;
+      setConversations(nextConversations);
+      setActiveConversation(conversation);
+      setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${id}`));
+      setView("messages");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function selectConversation(conversation: Conversation) {
+    setActiveConversation(conversation);
+    setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${conversation.id}`));
+  }
+
+  async function sendDirectMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeConversation) {
+      return;
+    }
+
+    const formElement = event.currentTarget;
+    const content = String(new FormData(formElement).get("content")).trim();
+    if (!content) {
+      return;
+    }
+
+    await authed(`/messages/conversations/${activeConversation.id}`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+    formElement.reset();
+    setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
+    setConversations(await authed<Conversation[]>("/messages/conversations"));
+  }
+
   async function startLive(title: string) {
     setLoading(true);
     setError("");
@@ -548,6 +1321,51 @@ export default function Page() {
     }
   }
 
+  async function updateLiveFrame(id: string, file: File) {
+    if (!session) {
+      return;
+    }
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+      await apiFetch(`/lives/${id}/frame`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+        body: form,
+      });
+    } catch {
+      // Frame updates are best-effort; the live should continue even if one frame fails.
+    }
+  }
+
+  async function sendLiveMessage(event: FormEvent<HTMLFormElement>, liveId: string) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const content = String(form.get("message")).trim();
+
+    if (!content) {
+      return;
+    }
+
+    setError("");
+    try {
+      const message = await authed<LiveChatMessage>(`/lives/${liveId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+      setLiveMessages((current) => ({
+        ...current,
+        [liveId]: [...(current[liveId] ?? []), message],
+      }));
+      formElement.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -561,11 +1379,25 @@ export default function Page() {
     const form = new FormData(event.currentTarget);
 
     try {
+      const avatarFile = form.get("avatarFile");
+      const coverFile = form.get("coverFile");
+      let avatar = String(form.get("avatar") || session.user.avatar || "");
+      let cover = String(form.get("cover") || session.user.cover || "");
+
+      if (avatarFile instanceof File && avatarFile.size > 0) {
+        avatar = (await uploadMedia(avatarFile)).url;
+      }
+
+      if (coverFile instanceof File && coverFile.size > 0) {
+        cover = (await uploadMedia(coverFile)).url;
+      }
+
       const user = await authed<User>("/auth/me", {
         method: "PATCH",
         body: JSON.stringify({
-          name: String(form.get("name")),
-          avatar: String(form.get("avatar")) || null,
+          name: String(form.get("name")).trim(),
+          avatar: avatar || null,
+          cover: cover || null,
           bio: String(form.get("bio")) || null,
         }),
       });
@@ -587,6 +1419,38 @@ export default function Page() {
         method: "POST",
         body: JSON.stringify({ userId }),
       });
+      if (publicProfile?.user.id === userId) {
+        setPublicProfile({ ...publicProfile, relationship: "REQUEST_SENT" });
+      }
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function openUserProfile(userId: string) {
+    if (session?.user.id === userId) {
+      setView("profile");
+      return;
+    }
+
+    setError("");
+    try {
+      const profile = await authed<PublicProfile>(`/friends/users/${userId}/profile`);
+      setPublicProfile(profile);
+      setView("publicProfile");
+      await refreshLiveMessages(profile.lives);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function blockUser(userId: string) {
+    setError("");
+    try {
+      await authed(`/friends/users/${userId}/block`, { method: "POST" });
+      setPublicProfile(null);
+      setView("friends");
       await refreshSocialData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
@@ -639,12 +1503,212 @@ export default function Page() {
     }
   }
 
+  function editPost(post: Post) {
+    setEditTarget({ kind: "post", id: post.id, title: "Editar publicacion", value: post.content });
+  }
+
+  function deletePost(postId: string) {
+    setDeleteTarget({
+      kind: "post",
+      id: postId,
+      title: "Eliminar publicacion",
+      description: "Esta publicacion se quitara de tu perfil y del inicio.",
+    });
+  }
+
+  function editComment(comment: Post["comments"][number]) {
+    setEditTarget({ kind: "comment", id: comment.id, title: "Editar comentario", value: comment.content });
+  }
+
+  function deleteComment(commentId: string) {
+    setDeleteTarget({
+      kind: "comment",
+      id: commentId,
+      title: "Eliminar comentario",
+      description: "Este comentario se quitara de la publicacion.",
+    });
+  }
+
+  function editLive(live: LiveSession) {
+    setEditTarget({ kind: "live", id: live.id, title: "Editar live", value: live.title });
+  }
+
+  function deleteLive(liveId: string) {
+    setDeleteTarget({
+      kind: "live",
+      id: liveId,
+      title: "Eliminar live",
+      description: "Este live se borrara de tu perfil.",
+    });
+  }
+
+  async function sharePost(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shareTarget) {
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+
+    setLoading(true);
+    setError("");
+    try {
+      await authed(`/posts/${shareTarget.id}/share`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: String(form.get("content")).trim(),
+          pageId: String(form.get("pageId") || "") || undefined,
+        }),
+      });
+      setShareTarget(null);
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sharePostByMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shareTarget) {
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const peerId = String(form.get("peerId") || "");
+    if (!peerId) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const { id } = await authed<{ id: string }>("/messages/conversations", {
+        method: "POST",
+        body: JSON.stringify({ peerId }),
+      });
+      await authed(`/messages/conversations/${id}`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: `${String(form.get("content")).trim() || "Te comparto esta publicacion"}\n\n${shareTarget.content}`,
+        }),
+      });
+      setShareTarget(null);
+      setView("messages");
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function reportPost(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reportTarget) {
+      return;
+    }
+    const reason = String(new FormData(event.currentTarget).get("reason") || "").trim();
+    if (!reason) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await authed(`/posts/${reportTarget.id}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      setReportTarget(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editTarget) {
+      return;
+    }
+
+    const form = new FormData(event.currentTarget);
+    const value = String(form.get("value") ?? "");
+    const path =
+      editTarget.kind === "post"
+        ? `/posts/${editTarget.id}`
+        : editTarget.kind === "comment"
+          ? `/posts/comments/${editTarget.id}`
+        : editTarget.kind === "story"
+          ? `/stories/${editTarget.id}`
+          : `/lives/${editTarget.id}`;
+    const body =
+      editTarget.kind === "post"
+        ? { content: value }
+        : editTarget.kind === "comment"
+          ? { content: value }
+        : editTarget.kind === "story"
+          ? { caption: value }
+          : { title: value };
+
+    setLoading(true);
+    setError("");
+    try {
+      await authed(path, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      setEditTarget(null);
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    const path =
+      deleteTarget.kind === "post"
+        ? `/posts/${deleteTarget.id}`
+        : deleteTarget.kind === "comment"
+          ? `/posts/comments/${deleteTarget.id}`
+        : deleteTarget.kind === "story"
+          ? `/stories/${deleteTarget.id}`
+          : `/lives/${deleteTarget.id}`;
+
+    setLoading(true);
+    setError("");
+    try {
+      await authed(path, { method: "DELETE" });
+      setDeleteTarget(null);
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function logout() {
     saveStoredSession(null);
     setPosts([]);
     setStories([]);
     setLives([]);
     setProfileLives([]);
+    setPages([]);
+    setMyPages([]);
+    setGroups([]);
+    setMyGroups([]);
+    setSelectedGroup(null);
+    setMarketplaceProducts([]);
+    setEvents([]);
+    setNotifications({ unreadCount: 0, notifications: [] });
     setSuggestions([]);
     setFriends([]);
     setRequests([]);
@@ -687,30 +1751,58 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-[#f7f5ef] text-[#17211f]">
       <TopBar
+        notifications={notifications}
         user={session.user}
         view={view}
+        onMarkNotificationsRead={markNotificationsRead}
+        onOpenNotification={openNotification}
         onNavigate={setView}
+        onSearch={runSearch}
         onLogout={logout}
         onProfile={() => setView("profile")}
       />
 
       <div
         className={`mx-auto grid w-full max-w-[1464px] gap-5 px-4 py-5 ${
-          view === "home"
-            ? "lg:grid-cols-[260px_minmax(0,700px)_330px]"
-            : "lg:grid-cols-[260px_minmax(0,1fr)]"
+          view === "profile"
+            ? "lg:grid-cols-1"
+            : view === "home"
+              ? "lg:grid-cols-[260px_minmax(0,700px)_330px]"
+              : "lg:grid-cols-[260px_minmax(0,1fr)]"
         }`}
       >
-        <LeftRail user={session.user} view={view} onNavigate={setView} />
+        {view !== "profile" && (
+          <LeftRail user={session.user} view={view} onNavigate={setView} />
+        )}
 
         {view === "profile" ? (
           <ProfilePage
             error={error}
+            friends={friends}
             lives={profileLives}
+            liveMessages={liveMessages}
             loading={loading}
+            myGroups={myGroups}
+            myPages={myPages}
             posts={posts.filter((post) => post.author.id === session.user.id)}
             session={session}
+            onDeleteLive={deleteLive}
+            onDeletePost={deletePost}
+            onEditLive={editLive}
+            onEditPost={editPost}
+            onOpenProfile={openUserProfile}
+            onSendLiveMessage={sendLiveMessage}
             onSubmit={updateProfile}
+          />
+        ) : view === "publicProfile" && publicProfile ? (
+          <PublicProfilePage
+            liveMessages={liveMessages}
+            profile={publicProfile}
+            viewerId={session.user.id}
+            onAddFriend={addFriend}
+            onBlock={blockUser}
+            onOpenProfile={openUserProfile}
+            onSendLiveMessage={sendLiveMessage}
           />
         ) : view === "friends" ? (
           <FriendsPage
@@ -719,10 +1811,132 @@ export default function Page() {
             suggestions={suggestions}
             onAccept={(id) => respondToRequest(id, "accept")}
             onAdd={addFriend}
+            onMessage={openConversation}
+            onOpenProfile={openUserProfile}
             onReject={(id) => respondToRequest(id, "reject")}
           />
+        ) : view === "messages" ? (
+          <MessagesPage
+            activeConversation={activeConversation}
+            conversations={conversations}
+            friends={friends}
+            messages={directMessages}
+            viewerId={session.user.id}
+            onOpenConversation={openConversation}
+            onSelectConversation={selectConversation}
+            onSendMessage={sendDirectMessage}
+          />
+        ) : view === "search" ? (
+          <SearchPage
+            history={searchHistory}
+            results={searchResults}
+            onOpenGroup={(groupId) => {
+              const group = groups.find((item) => item.id === groupId);
+              if (group) {
+                openGroup(group);
+              } else {
+                void authed<SocialGroup>(`/groups/${groupId}`).then(openGroup).catch(() => undefined);
+              }
+            }}
+            onOpenPage={(pageId) => {
+              const page = pages.find((item) => item.id === pageId);
+              if (page) {
+                openPage(page);
+              } else {
+                void authed<SocialPage>(`/pages/${pageId}`).then(openPage).catch(() => undefined);
+              }
+            }}
+            onOpenProfile={openUserProfile}
+            onOpenPost={() => setView("home")}
+            onOpenLive={() => setView("lives")}
+            onSearch={runSearch}
+          />
+        ) : view === "groups" ? (
+          <GroupsPage
+            groups={groups}
+            loading={loading}
+            myGroups={myGroups}
+            onCreate={createGroup}
+            onOpenGroup={openGroup}
+            onToggleJoin={toggleGroupJoin}
+          />
+        ) : view === "marketplace" ? (
+          <MarketplacePage
+            loading={loading}
+            products={marketplaceProducts}
+            viewerId={session.user.id}
+            onContactSeller={openConversation}
+            onOpenProfile={openUserProfile}
+            onSubmit={createMarketplaceProduct}
+          />
+        ) : view === "events" ? (
+          <EventsPage
+            events={events}
+            friends={friends}
+            loading={loading}
+            myGroups={myGroups}
+            myPages={myPages}
+            onInvite={inviteToEvent}
+            onOpenProfile={openUserProfile}
+            onRsvp={rsvpEvent}
+            onSubmit={createEvent}
+          />
+        ) : view === "groupDetail" && selectedGroup ? (
+          <GroupDetail
+            group={selectedGroup}
+            posts={posts.filter((post) => post.group?.id === selectedGroup.id)}
+            viewerId={session.user.id}
+            onBack={() => setView("groups")}
+            onCommentPost={commentOnPost}
+            onCommentDelete={deleteComment}
+            onCommentEdit={editComment}
+            onCreatePost={createPost}
+            onDeletePost={deletePost}
+            onEditPost={editPost}
+            onOpenProfile={openUserProfile}
+            onReact={toggleReaction}
+            onReportPost={setReportTarget}
+            onShare={setShareTarget}
+            onToggleJoin={toggleGroupJoin}
+          />
+        ) : view === "pages" ? (
+          <PagesPage
+            loading={loading}
+            myPages={myPages}
+            onOpenPage={openPage}
+            pages={pages}
+            onFollow={togglePageFollow}
+            onSubmit={createPage}
+          />
+        ) : view === "pageDetail" && selectedPage ? (
+          <PageDetail
+            page={selectedPage}
+            posts={posts.filter((post) => post.page?.id === selectedPage.id)}
+            viewerId={session.user.id}
+            onBack={() => setView("pages")}
+            onCommentPost={commentOnPost}
+            onCommentDelete={deleteComment}
+            onCommentEdit={editComment}
+            onCreatePost={createPost}
+            onDeletePost={deletePost}
+            onEditPost={editPost}
+            onFollow={togglePageFollow}
+            onOpenProfile={openUserProfile}
+            onReact={toggleReaction}
+            onReportPost={setReportTarget}
+            onShare={setShareTarget}
+            onUpdate={updatePage}
+          />
         ) : view === "lives" ? (
-          <LivesPage lives={profileLives} />
+          <LivesPage
+            lives={lives}
+            liveMessages={liveMessages}
+            viewerId={session.user.id}
+            onDelete={deleteLive}
+            onEdit={editLive}
+            onOpenProfile={openUserProfile}
+            onSendMessage={sendLiveMessage}
+          />
         ) : (
           <section className="space-y-4">
             <Stories
@@ -733,12 +1947,16 @@ export default function Page() {
             />
             <Composer
             lives={lives}
+            liveMessages={liveMessages}
             loading={loading}
+            myPages={myPages}
             onUploadMedia={uploadMedia}
             user={session.user}
             onEndLive={endLive}
+            onSendLiveMessage={sendLiveMessage}
               onStartLive={startLive}
               onSubmit={createPost}
+              onUpdateLiveFrame={updateLiveFrame}
             />
             {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             {posts.length === 0 ? (
@@ -750,8 +1968,16 @@ export default function Page() {
                 <FeedPost
                   key={post.id}
                   post={post}
+                  viewerId={session.user.id}
                   onComment={commentOnPost}
+                  onCommentDelete={deleteComment}
+                  onCommentEdit={editComment}
+                  onDelete={deletePost}
+                  onEdit={editPost}
+                  onOpenProfile={openUserProfile}
                   onReact={toggleReaction}
+                  onReport={setReportTarget}
+                  onShare={setShareTarget}
                 />
               ))
             )}
@@ -766,30 +1992,79 @@ export default function Page() {
             wallet={wallet}
             onAccept={(id) => respondToRequest(id, "accept")}
             onAdd={addFriend}
+            onOpenProfile={openUserProfile}
             onReject={(id) => respondToRequest(id, "reject")}
           />
         )}
       </div>
+      {editTarget && (
+        <EditContentModal
+          loading={loading}
+          target={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSubmit={submitEdit}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          loading={loading}
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
+      {shareTarget && (
+        <SharePostModal
+          friends={friends}
+          loading={loading}
+          myPages={myPages}
+          post={shareTarget}
+          onClose={() => setShareTarget(null)}
+          onMessenger={sharePostByMessage}
+          onShare={sharePost}
+        />
+      )}
+      {reportTarget && (
+        <ReportPostModal
+          loading={loading}
+          post={reportTarget}
+          onClose={() => setReportTarget(null)}
+          onReport={reportPost}
+        />
+      )}
     </main>
   );
 }
 
 function TopBar({
+  notifications,
+  onMarkNotificationsRead,
+  onOpenNotification,
   user,
   view,
   onNavigate,
+  onSearch,
   onLogout,
   onProfile,
 }: {
+  notifications: NotificationState;
+  onMarkNotificationsRead: () => void;
+  onOpenNotification: (notification: NotificationItem) => void;
   user: User;
   view: AppView;
   onNavigate: (view: AppView) => void;
+  onSearch: (query: string) => void;
   onLogout: () => void;
   onProfile: () => void;
 }) {
   const navItems: { label: string; view: AppView }[] = [
     { label: "Inicio", view: "home" },
     { label: "Amigos", view: "friends" },
+    { label: "Mensajes", view: "messages" },
+    { label: "Paginas", view: "pages" },
+    { label: "Grupos", view: "groups" },
+    { label: "Marketplace", view: "marketplace" },
+    { label: "Eventos", view: "events" },
     { label: "Lives", view: "lives" },
     { label: "Perfil", view: "profile" },
   ];
@@ -800,10 +2075,20 @@ function TopBar({
         <div className="grid size-10 place-items-center rounded-xl bg-[#17211f] text-lg font-black text-[#f2c166]">
           N
         </div>
-        <input
-          className="hidden h-10 w-64 rounded-xl border border-[#ded7c9] bg-white px-4 text-sm outline-none focus:border-[#49625b] md:block"
-          placeholder="Buscar en Nexo"
-        />
+        <form
+          className="hidden md:block"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const query = String(new FormData(event.currentTarget).get("query") || "");
+            onSearch(query);
+          }}
+        >
+          <input
+            className="h-10 w-64 rounded-xl border border-[#ded7c9] bg-white px-4 text-sm outline-none focus:border-[#49625b]"
+            name="query"
+            placeholder="Buscar en Nexo"
+          />
+        </form>
         <nav className="mx-auto hidden h-full items-center gap-2 md:flex">
           {navItems.map((item) => (
             <button
@@ -817,6 +2102,46 @@ function TopBar({
             </button>
           ))}
         </nav>
+        <details className="relative">
+          <summary
+            className="grid size-10 cursor-pointer list-none place-items-center rounded-xl bg-[#ece7dc] text-sm font-black text-[#17211f] hover:bg-[#ded7c9]"
+            onClick={() => {
+              if (notifications.unreadCount > 0) {
+                window.setTimeout(onMarkNotificationsRead, 250);
+              }
+            }}
+          >
+            N
+            {notifications.unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
+                {notifications.unreadCount}
+              </span>
+            )}
+          </summary>
+          <div className="absolute right-0 top-12 z-30 w-80 overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-2xl">
+            <div className="border-b border-[#eee8dc] p-3">
+              <h2 className="text-sm font-black">Notificaciones</h2>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {notifications.notifications.length === 0 ? (
+                <p className="p-4 text-sm text-[#6d746f]">No tienes notificaciones.</p>
+              ) : (
+                notifications.notifications.map((notification) => (
+                  <button
+                    className={`block w-full border-b border-[#f0ece3] p-3 text-left text-sm hover:bg-[#f7f5ef] ${notification.readAt ? "bg-white" : "bg-[#fff8e8]"}`}
+                    key={notification.id}
+                    onClick={() => onOpenNotification(notification)}
+                    type="button"
+                  >
+                    <p className="font-black text-[#17211f]">{notification.title}</p>
+                    <p className="mt-1 text-[#53645f]">{notification.body}</p>
+                    <p className="mt-1 text-[11px] text-[#8a8f8b]">{new Date(notification.createdAt).toLocaleString()}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </details>
         <button
           className="ml-auto flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-[#ece7dc]"
           onClick={onProfile}
@@ -847,6 +2172,11 @@ function LeftRail({
   const items: { label: string; view: AppView }[] = [
     { label: "Inicio", view: "home" },
     { label: "Amigos", view: "friends" },
+    { label: "Mensajes", view: "messages" },
+    { label: "Paginas", view: "pages" },
+    { label: "Grupos", view: "groups" },
+    { label: "Marketplace", view: "marketplace" },
+    { label: "Eventos", view: "events" },
     { label: "Lives", view: "lives" },
     { label: "Perfil", view: "profile" },
   ];
@@ -890,6 +2220,15 @@ function Stories({
   const [previewStory, setPreviewStory] = useState<Story | null>(null);
   const [draftPreview, setDraftPreview] = useState("");
   const [draftType, setDraftType] = useState<"IMAGE" | "VIDEO">("IMAGE");
+  const [now, setNow] = useState(() => Date.now());
+  const activeStories = stories.filter((story) => isActiveStory(story, now));
+  const activePreviewStory =
+    previewStory && isActiveStory(previewStory, now) ? previewStory : null;
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   function closeCreate() {
     if (draftPreview) {
@@ -989,11 +2328,21 @@ function Stories({
           </div>
         </button>
 
-        {stories.slice(0, 7).map((story) => (
-            <button
+        {activeStories.slice(0, 7).map((story) => (
+            <div
               className="relative h-48 overflow-hidden rounded-2xl bg-[#17211f] text-white"
               key={story.id}
-              onClick={() => setPreviewStory(story)}
+            >
+            <button
+              className="size-full text-left"
+              onClick={() => {
+                document.querySelectorAll("details[open]").forEach((element) => {
+                  if (element instanceof HTMLDetailsElement) {
+                    element.open = false;
+                  }
+                });
+                setPreviewStory(story);
+              }}
               type="button"
             >
               {story.mediaType === "IMAGE" ? (
@@ -1008,38 +2357,39 @@ function Stories({
                 {story.caption && <p className="line-clamp-2 text-xs">{story.caption}</p>}
               </div>
             </button>
+          </div>
         ))}
       </div>
 
-      {previewStory && (
+      {activePreviewStory && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-[#111816]/90 px-4">
           <button
-            className="absolute right-5 top-5 rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
+            className="absolute left-5 top-5 rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
             onClick={() => setPreviewStory(null)}
             type="button"
           >
             Cerrar
           </button>
           <div className="relative h-[86vh] w-full max-w-[430px] overflow-hidden rounded-2xl bg-black shadow-2xl">
-            {previewStory.mediaType === "VIDEO" ? (
-              <video className="size-full object-contain" controls src={mediaSrc(previewStory.mediaUrl)} />
+            {activePreviewStory.mediaType === "VIDEO" ? (
+              <video className="size-full object-contain" controls src={mediaSrc(activePreviewStory.mediaUrl)} />
             ) : (
-              <img alt="" className="size-full object-contain" src={mediaSrc(previewStory.mediaUrl)} />
+              <img alt="" className="size-full object-contain" src={mediaSrc(activePreviewStory.mediaUrl)} />
             )}
             <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-4">
               <div className="flex items-center gap-3 text-white">
-                <Avatar name={previewStory.authorName} src={previewStory.authorAvatar} size="sm" />
+                <Avatar name={activePreviewStory.authorName} src={activePreviewStory.authorAvatar} size="sm" />
                 <div>
-                  <p className="text-sm font-black">{previewStory.authorName}</p>
+                  <p className="text-sm font-black">{activePreviewStory.authorName}</p>
                   <p className="text-xs text-white/70">
-                    {new Date(previewStory.createdAt).toLocaleString()}
+                    {new Date(activePreviewStory.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
             </div>
-            {previewStory.caption && (
+            {activePreviewStory.caption && (
               <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 pt-16 text-sm font-semibold text-white">
-                {previewStory.caption}
+                {activePreviewStory.caption}
               </p>
             )}
           </div>
@@ -1051,20 +2401,28 @@ function Stories({
 
 function Composer({
   lives,
+  liveMessages,
   loading,
+  myPages,
   onUploadMedia,
   user,
   onEndLive,
+  onSendLiveMessage,
   onStartLive,
   onSubmit,
+  onUpdateLiveFrame,
 }: {
   lives: LiveSession[];
+  liveMessages: Record<string, LiveChatMessage[]>;
   loading: boolean;
+  myPages: SocialPage[];
   onUploadMedia: (file: File) => Promise<{ url: string; mediaType: "IMAGE" | "VIDEO" }>;
   user: User;
   onEndLive: (id: string, recordingUrl?: string) => void;
+  onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
   onStartLive: (title: string) => Promise<void>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateLiveFrame: (id: string, file: File) => Promise<void>;
 }) {
   const [liveOpen, setLiveOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -1073,7 +2431,11 @@ function Composer({
   const liveStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const frameUploadBusyRef = useRef(false);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const myLive = lives.find((live) => live.hostId === user.id);
+  const myLiveMessages = myLive ? liveMessages[myLive.id] ?? [] : [];
 
   useEffect(() => {
     if (liveVideoRef.current && liveStreamRef.current) {
@@ -1142,6 +2504,45 @@ function Composer({
     stopCamera();
   }
 
+  const publishFrame = useCallback(async (liveId: string) => {
+    const video = liveVideoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight || frameUploadBusyRef.current) {
+      return;
+    }
+
+    frameUploadBusyRef.current = true;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 480;
+      canvas.height = Math.round((video.videoHeight / video.videoWidth) * canvas.width);
+      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.62));
+      if (!blob) {
+        return;
+      }
+
+      const file = new File([blob], `live-frame-${Date.now()}.jpg`, { type: "image/jpeg" });
+      await onUpdateLiveFrame(liveId, file);
+    } catch {
+      // Best-effort preview frame.
+    } finally {
+      frameUploadBusyRef.current = false;
+    }
+  }, [onUpdateLiveFrame]);
+
+  useEffect(() => {
+    if (!myLive || !cameraReady) {
+      return;
+    }
+
+    const id = window.setInterval(() => {
+      void publishFrame(myLive.id);
+    }, 1000);
+    void publishFrame(myLive.id);
+
+    return () => window.clearInterval(id);
+  }, [myLive, cameraReady, publishFrame]);
+
   function stopRecordingAndUpload() {
     return new Promise<string | undefined>((resolve) => {
       const recorder = recorderRef.current;
@@ -1159,17 +2560,35 @@ function Composer({
           return;
         }
 
-        const file = new File([blob], `live-${Date.now()}.webm`, { type: "video/webm" });
-        const uploaded = await onUploadMedia(file);
-        resolve(uploaded.url);
+        try {
+          const file = new File([blob], `live-${Date.now()}.webm`, { type: "video/webm" });
+          const uploaded = await onUploadMedia(file);
+          resolve(uploaded.url);
+        } catch {
+          setCameraError("No se pudo guardar la grabacion del live.");
+          resolve(undefined);
+        }
       };
       recorder.stop();
     });
   }
 
+  function clearMedia() {
+    setSelectedMedia(null);
+    if (mediaInputRef.current) {
+      mediaInputRef.current.value = "";
+    }
+  }
+
   return (
     <>
-      <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+      <form
+        className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm"
+        onSubmit={(event) => {
+          void onSubmit(event);
+          clearMedia();
+        }}
+      >
         <div className="flex gap-3">
           <Avatar name={user.name} src={user.avatar} size="md" />
           <div className="grid flex-1 gap-3">
@@ -1178,20 +2597,67 @@ function Composer({
               name="content"
               placeholder={`Que estas pensando, ${user.name}?`}
             />
-            <div className="grid gap-2">
-              <input
-                accept="image/*,video/*"
-                className={inputClass}
-                name="mediaFile"
-                type="file"
-              />
-            </div>
+            <input
+              ref={mediaInputRef}
+              accept="image/*,video/*"
+              className="hidden"
+              name="mediaFile"
+              type="file"
+              onChange={(event) => setSelectedMedia(event.currentTarget.files?.[0] ?? null)}
+            />
+            {selectedMedia && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-[#17211f]">{selectedMedia.name}</p>
+                  <p className="text-xs text-[#6d746f]">
+                    {selectedMedia.type.startsWith("video/") ? "Video" : "Foto"} seleccionada
+                  </p>
+                </div>
+                <button className="rounded-lg bg-[#ece7dc] px-3 py-1.5 text-xs font-bold hover:bg-[#ded7c9]" type="button" onClick={clearMedia}>
+                  Quitar
+                </button>
+              </div>
+            )}
+            {myPages.length > 0 && (
+              <select
+                className="rounded-xl border border-[#ded7c9] bg-white px-3 py-2 text-sm font-semibold text-[#53645f] outline-none focus:border-[#49625b]"
+                name="pageId"
+              >
+                <option value="">Publicar como {user.name}</option>
+                {myPages.map((page) => (
+                  <option key={page.id} value={page.id}>
+                    Publicar como {page.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              className="rounded-xl border border-[#ded7c9] bg-white px-3 py-2 text-sm font-semibold text-[#53645f] outline-none focus:border-[#49625b]"
+              name="audience"
+              defaultValue="PUBLIC"
+            >
+              <option value="PUBLIC">Publico</option>
+              <option value="FRIENDS">Amigos</option>
+              <option value="ONLY_ME">Solo yo</option>
+            </select>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-[#eee8dc] pt-3">
           <div className="flex gap-2 text-xs font-bold text-[#65736f]">
-            <span className="rounded-xl bg-[#f4efe5] px-3 py-2">Foto</span>
-            <span className="rounded-xl bg-[#f4efe5] px-3 py-2">Video</span>
+            <button
+              className="rounded-xl bg-[#f4efe5] px-3 py-2 hover:bg-[#ece7dc]"
+              type="button"
+              onClick={() => mediaInputRef.current?.click()}
+            >
+              Foto
+            </button>
+            <button
+              className="rounded-xl bg-[#f4efe5] px-3 py-2 hover:bg-[#ece7dc]"
+              type="button"
+              onClick={() => mediaInputRef.current?.click()}
+            >
+              Video
+            </button>
             <button
               className="rounded-xl bg-red-50 px-3 py-2 text-red-700 hover:bg-red-100"
               onClick={() => setLiveOpen(true)}
@@ -1207,24 +2673,43 @@ function Composer({
       </form>
 
       {myLive && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase text-red-700">En vivo</p>
-              <h2 className="text-base font-black">{myLive.title}</h2>
+        <section className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+          <div className="grid lg:grid-cols-[1fr_320px]">
+            <div className="bg-[#090b0b] p-4 text-white">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+                    <span className="size-2 rounded-full bg-white" />
+                    En vivo
+                  </p>
+                  <h2 className="mt-3 text-xl font-black">{myLive.title}</h2>
+                  <p className="mt-1 text-xs text-white/60">
+                    Inicio {new Date(myLive.startedAt).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#111816]" type="button" onClick={() => void finishLive(myLive.id)}>
+                  Finalizar
+                </button>
+              </div>
+              <div className="mt-4 grid aspect-video place-items-center rounded-2xl border border-white/10 bg-black text-sm font-bold text-white/50">
+                Panel de transmision activo
+              </div>
             </div>
-            <button className={primaryButtonClass} type="button" onClick={() => void finishLive(myLive.id)}>
-              Finalizar live
-            </button>
+            <LiveChatPanel
+              live={myLive}
+              messages={myLiveMessages}
+              onSend={onSendLiveMessage}
+            />
           </div>
         </section>
       )}
 
       {liveOpen && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-[#111816]/85 px-4 backdrop-blur-sm">
-          <form
-            className="grid max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl md:grid-cols-[1fr_320px]"
-            onSubmit={submitLive}
+          <div
+            className={`grid max-h-[92vh] w-full overflow-hidden rounded-2xl bg-white shadow-2xl ${
+              myLive ? "max-w-7xl md:grid-cols-[1fr_300px_340px]" : "max-w-5xl md:grid-cols-[1fr_320px]"
+            }`}
           >
             <div className="bg-[#111816] p-5">
               <div className="relative overflow-hidden rounded-2xl bg-black">
@@ -1242,15 +2727,15 @@ function Composer({
                   </div>
                 )}
                 <div className="absolute left-4 top-4 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase text-white">
-                  Live preview
+                  {myLive ? "En vivo" : "Live preview"}
                 </div>
               </div>
             </div>
 
-            <aside className="grid content-between gap-4 p-5">
+            <form className="grid content-between gap-4 p-5" onSubmit={submitLive}>
               <div>
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-black">Crear live</h2>
+                  <h2 className="text-xl font-black">{myLive ? "Panel de live" : "Crear live"}</h2>
                   <button
                     className={secondaryButtonClass}
                     type="button"
@@ -1263,9 +2748,21 @@ function Composer({
                   </button>
                 </div>
                 <p className="mt-2 text-sm text-[#6d746f]">
-                  Transmite desde tu camara. La sesion queda registrada como live activo en la app.
+                  {myLive
+                    ? "Administra tu transmision y conversa con el chat en tiempo real."
+                    : "Transmite desde tu camara. La sesion queda registrada como live activo en la app."}
                 </p>
-                <input className={`${inputClass} mt-5`} name="title" placeholder="Titulo del live" required />
+                {myLive ? (
+                  <div className="mt-5 rounded-2xl bg-red-50 p-4">
+                    <p className="text-xs font-black uppercase text-red-700">Transmitiendo</p>
+                    <h3 className="mt-1 text-base font-black">{myLive.title}</h3>
+                    <p className="mt-1 text-xs text-[#6d746f]">
+                      Inicio {new Date(myLive.startedAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ) : (
+                  <input className={`${inputClass} mt-5`} name="title" placeholder="Titulo del live" required />
+                )}
                 {cameraError && <p className="mt-3 text-sm font-semibold text-red-700">{cameraError}</p>}
               </div>
 
@@ -1283,8 +2780,16 @@ function Composer({
                   </button>
                 )}
               </div>
-            </aside>
-          </form>
+            </form>
+
+            {myLive && (
+              <LiveChatPanel
+                live={myLive}
+                messages={myLiveMessages}
+                onSend={onSendLiveMessage}
+              />
+            )}
+          </div>
         </div>
       )}
     </>
@@ -1293,26 +2798,90 @@ function Composer({
 
 function FeedPost({
   post,
+  viewerId,
   onComment,
+  onCommentDelete,
+  onCommentEdit,
+  onDelete,
+  onEdit,
+  onOpenProfile,
   onReact,
+  onReport,
+  onShare,
 }: {
   post: Post;
+  viewerId: string;
   onComment: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onCommentDelete: (commentId: string) => void;
+  onCommentEdit: (comment: Post["comments"][number]) => void;
+  onDelete: (postId: string) => void;
+  onEdit: (post: Post) => void;
+  onOpenProfile: (userId: string) => void;
   onReact: (postId: string) => void;
+  onReport: (post: Post) => void;
+  onShare: (post: Post) => void;
 }) {
+  const canManage = post.author.id === viewerId;
+  const [commentOpen, setCommentOpen] = useState(false);
+  const commentLabel = post.commentCount === 1 ? "comentario" : "comentarios";
+  const actor = post.page ?? post.author;
+
   return (
     <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <Avatar name={post.author.name} src={post.author.avatar} size="md" />
-        <div>
-          <h2 className="text-sm font-semibold">{post.author.name}</h2>
-          <p className="text-xs text-[#6d746f]">
-            {new Date(post.createdAt).toLocaleString()}
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-3 text-left" type="button" onClick={() => onOpenProfile(post.author.id)}>
+            <Avatar name={actor.name} src={actor.avatar} size="md" />
+          <div>
+            <h2 className="text-sm font-semibold">{actor.name}</h2>
+            <p className="text-xs text-[#6d746f]">
+              {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+              {new Date(post.createdAt).toLocaleString()}
+            </p>
+          </div>
+          </button>
         </div>
+        <ActionMenu
+          items={canManage ? [
+            {
+              icon: "E",
+              label: "Editar publicacion",
+              description: "Cambiar el texto de esta publicacion.",
+              onClick: () => onEdit(post),
+            },
+            {
+              destructive: true,
+              icon: "D",
+              label: "Eliminar publicacion",
+              description: "Quitarla de tu perfil y del inicio.",
+              onClick: () => onDelete(post.id),
+            },
+          ] : [
+            {
+              destructive: true,
+              icon: "R",
+              label: "Reportar publicacion",
+              description: "Enviar esta publicacion a moderacion.",
+              onClick: () => onReport(post),
+            },
+          ]}
+        />
       </div>
+      <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[#6d746f]">
+        {post.audience === "FRIENDS" ? "Amigos" : post.audience === "ONLY_ME" ? "Solo yo" : "Publico"}
+      </p>
       <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>
       {post.mediaUrl && <PostMedia type={post.mediaType} url={post.mediaUrl} />}
+      {post.sharedPost && (
+        <div className="mt-4 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Avatar name={post.sharedPost.author.name} src={post.sharedPost.author.avatar} size="sm" />
+            <span className="text-sm font-black">{post.sharedPost.author.name}</span>
+          </div>
+          {post.sharedPost.content && <p className="whitespace-pre-wrap text-sm text-[#53645f]">{post.sharedPost.content}</p>}
+          {post.sharedPost.mediaUrl && <PostMedia type={post.sharedPost.mediaType} url={post.sharedPost.mediaUrl} />}
+        </div>
+      )}
       {post.signature && (
         <p className="mt-3 rounded-xl border border-[#e7decd] bg-[#fff8e8] px-3 py-2 text-xs text-[#6d5b32]">
           Firmado por app signer {post.signerAddress?.slice(0, 6)}...
@@ -1321,7 +2890,14 @@ function FeedPost({
       )}
       <div className="mt-3 flex justify-between border-t border-[#eee8dc] pt-3 text-xs text-[#6d746f]">
         <span>{post.reactionCount} apoyos</span>
-        <span>{post.commentCount} comentarios</span>
+        <span>{post.shareCount} compartidos</span>
+        <button
+          className="font-semibold hover:underline"
+          type="button"
+          onClick={() => setCommentOpen((open) => !open)}
+        >
+          {post.commentCount} {commentLabel}
+        </button>
       </div>
       <div className="mt-4 flex border-t border-[#eee8dc] pt-2 text-sm text-[#65736f]">
         <button
@@ -1332,17 +2908,23 @@ function FeedPost({
         >
           Apoyar
         </button>
-        <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]">
+        <button
+          className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]"
+          type="button"
+          onClick={() => setCommentOpen((open) => !open)}
+        >
           Comentar
         </button>
-        <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]">
+        <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]" type="button" onClick={() => onShare(post)}>
           Compartir
         </button>
       </div>
       <div className="mt-3 space-y-3">
         {post.comments.map((comment) => (
           <div className="flex gap-2" key={comment.id}>
-            <Avatar name={comment.author.name} src={comment.author.avatar} size="sm" />
+            <button type="button" onClick={() => onOpenProfile(comment.author.id)}>
+              <Avatar name={comment.author.name} src={comment.author.avatar} size="sm" />
+            </button>
             <div className="rounded-xl bg-[#f4efe5] px-3 py-2">
               <p className="text-xs font-semibold">{comment.author.name}</p>
               <p className="text-sm">{comment.content}</p>
@@ -1351,18 +2933,40 @@ function FeedPost({
                 {comment.signerAddress.slice(-4)}
               </p>
             </div>
+            {comment.author.id === viewerId && (
+              <ActionMenu
+                items={[
+                  {
+                    icon: "E",
+                    label: "Editar comentario",
+                    description: "Cambiar el texto de este comentario.",
+                    onClick: () => onCommentEdit(comment),
+                  },
+                  {
+                    destructive: true,
+                    icon: "D",
+                    label: "Eliminar comentario",
+                    description: "Quitar este comentario.",
+                    onClick: () => onCommentDelete(comment.id),
+                  },
+                ]}
+              />
+            )}
           </div>
         ))}
-        <form className="flex gap-2" onSubmit={(event) => onComment(event, post.id)}>
-          <input
-            className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
-            name="comment"
-            placeholder="Escribe un comentario..."
-          />
-          <button className={secondaryButtonClass} type="submit">
-            Enviar
-          </button>
-        </form>
+        {commentOpen && (
+          <form className="flex gap-2" onSubmit={(event) => onComment(event, post.id)}>
+            <input
+              autoFocus
+              className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
+              name="comment"
+              placeholder="Escribe un comentario..."
+            />
+            <button className={secondaryButtonClass} type="submit">
+              Enviar
+            </button>
+          </form>
+        )}
       </div>
     </article>
   );
@@ -1412,6 +3016,7 @@ function PostMedia({
 
 function RightRail({
   friends,
+  onOpenProfile,
   requests,
   suggestions,
   wallet,
@@ -1420,6 +3025,7 @@ function RightRail({
   onReject,
 }: {
   friends: User[];
+  onOpenProfile: (userId: string) => void;
   requests: FriendRequest[];
   suggestions: User[];
   wallet: WalletAccount | null;
@@ -1443,7 +3049,7 @@ function RightRail({
         ) : (
           requests.map((request) => (
             <div className="space-y-2" key={request.id}>
-              <PersonRow user={request.requester} />
+              <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
               <div className="grid grid-cols-2 gap-2">
                 <button className={primaryButtonClass} onClick={() => onAccept(request.id)}>
                   Confirmar
@@ -1463,7 +3069,7 @@ function RightRail({
         ) : (
           suggestions.map((user) => (
             <div className="flex items-center justify-between gap-3" key={user.id}>
-              <PersonRow user={user} />
+              <PersonRow user={user} onOpenProfile={onOpenProfile} />
               <button className={secondaryButtonClass} onClick={() => onAdd(user.id)}>
                 Agregar
               </button>
@@ -1476,7 +3082,7 @@ function RightRail({
         {friends.length === 0 ? (
           <EmptyText>Aun no tienes amigos agregados.</EmptyText>
         ) : (
-          friends.map((friend) => <PersonRow key={friend.id} user={friend} />)
+          friends.map((friend) => <PersonRow key={friend.id} user={friend} onOpenProfile={onOpenProfile} />)
         )}
       </Panel>
     </aside>
@@ -1485,6 +3091,8 @@ function RightRail({
 
 function FriendsPage({
   friends,
+  onMessage,
+  onOpenProfile,
   requests,
   suggestions,
   onAccept,
@@ -1492,6 +3100,8 @@ function FriendsPage({
   onReject,
 }: {
   friends: User[];
+  onMessage: (userId: string) => void;
+  onOpenProfile: (userId: string) => void;
   requests: FriendRequest[];
   suggestions: User[];
   onAccept: (id: string) => void;
@@ -1499,7 +3109,7 @@ function FriendsPage({
   onReject: (id: string) => void;
 }) {
   return (
-    <section className="space-y-4 lg:col-span-2">
+    <section className="space-y-4">
       <PageHeader
         kicker="Red"
         title="Amigos"
@@ -1515,7 +3125,7 @@ function FriendsPage({
             ) : (
               requests.map((request) => (
                 <div className="rounded-xl bg-[#f7f5ef] p-3" key={request.id}>
-                  <PersonRow user={request.requester} />
+                  <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button className={primaryButtonClass} onClick={() => onAccept(request.id)}>
                       Confirmar
@@ -1538,7 +3148,7 @@ function FriendsPage({
             ) : (
               suggestions.map((user) => (
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] p-3" key={user.id}>
-                  <PersonRow user={user} />
+                  <PersonRow user={user} onOpenProfile={onOpenProfile} />
                   <button className={secondaryButtonClass} onClick={() => onAdd(user.id)}>
                     Agregar
                   </button>
@@ -1556,7 +3166,10 @@ function FriendsPage({
             ) : (
               friends.map((friend) => (
                 <div className="rounded-xl bg-[#f7f5ef] p-3" key={friend.id}>
-                  <PersonRow user={friend} />
+                  <PersonRow user={friend} onOpenProfile={onOpenProfile} />
+                  <button className={`${secondaryButtonClass} mt-3 w-full`} type="button" onClick={() => onMessage(friend.id)}>
+                    Mensaje
+                  </button>
                 </div>
               ))
             )}
@@ -1567,22 +3180,985 @@ function FriendsPage({
   );
 }
 
-function LivesPage({ lives }: { lives: LiveSession[] }) {
+function MessagesPage({
+  activeConversation,
+  conversations,
+  friends,
+  messages,
+  onOpenConversation,
+  onSelectConversation,
+  onSendMessage,
+  viewerId,
+}: {
+  activeConversation: Conversation | null;
+  conversations: Conversation[];
+  friends: User[];
+  messages: DirectMessage[];
+  onOpenConversation: (userId: string) => void;
+  onSelectConversation: (conversation: Conversation) => void;
+  onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  viewerId: string;
+}) {
   return (
-    <section className="space-y-4 lg:col-span-2">
+    <section className="grid min-h-[calc(100vh-110px)] overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="border-r border-[#eee8dc]">
+        <div className="border-b border-[#eee8dc] p-4">
+          <h1 className="text-2xl font-black">Mensajes</h1>
+          <p className="mt-1 text-xs text-[#6d746f]">Mensajes directos firmados por app signer.</p>
+        </div>
+        <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-3">
+          {conversations.map((conversation) => (
+            <button
+              className={`mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef] ${
+                activeConversation?.id === conversation.id ? "bg-[#f7f5ef]" : ""
+              }`}
+              key={conversation.id}
+              type="button"
+              onClick={() => void onSelectConversation(conversation)}
+            >
+              <Avatar name={conversation.peerName} src={conversation.peerAvatar} size="sm" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black">{conversation.peerName}</p>
+                <p className="truncate text-xs text-[#6d746f]">{conversation.lastMessage || "Sin mensajes todavia"}</p>
+              </div>
+            </button>
+          ))}
+          {friends.length > 0 && (
+            <div className="mt-4 border-t border-[#eee8dc] pt-3">
+              <p className="mb-2 text-xs font-black uppercase text-[#65736f]">Iniciar chat</p>
+              {friends.map((friend) => (
+                <button
+                  className="mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]"
+                  key={friend.id}
+                  type="button"
+                  onClick={() => void onOpenConversation(friend.id)}
+                >
+                  <Avatar name={friend.name} src={friend.avatar} size="sm" />
+                  <span className="text-sm font-bold">{friend.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+      <div className="flex min-h-[560px] flex-col">
+        {activeConversation ? (
+          <>
+            <header className="flex items-center gap-3 border-b border-[#eee8dc] p-4">
+              <Avatar name={activeConversation.peerName} src={activeConversation.peerAvatar} size="sm" />
+              <div>
+                <h2 className="font-black">{activeConversation.peerName}</h2>
+                <p className="text-xs text-[#6d746f]">Chat privado firmado</p>
+              </div>
+            </header>
+            <div className="flex-1 space-y-3 overflow-y-auto bg-[#f7f5ef] p-4">
+              {messages.map((message) => {
+                const mine = message.senderId === viewerId;
+                return (
+                  <div className={`flex ${mine ? "justify-end" : "justify-start"}`} key={message.id}>
+                    <div className={`max-w-[72%] rounded-2xl px-4 py-2 text-sm shadow-sm ${mine ? "bg-[#17211f] text-white" : "bg-white text-[#17211f]"}`}>
+                      <p>{message.content}</p>
+                      {message.signerAddress && (
+                        <p className={`mt-1 text-[10px] ${mine ? "text-white/60" : "text-[#6d746f]"}`}>
+                          firmado {message.signerAddress.slice(0, 6)}...{message.signerAddress.slice(-4)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <form className="flex gap-2 border-t border-[#eee8dc] p-3" onSubmit={onSendMessage}>
+              <input
+                className="min-w-0 flex-1 rounded-full border border-[#ded7c9] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
+                name="content"
+                placeholder="Escribe un mensaje..."
+              />
+              <button className={primaryButtonClass} type="submit">
+                Enviar
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className="grid flex-1 place-items-center p-8 text-center text-sm text-[#6d746f]">
+            Selecciona una conversacion o inicia una desde tus amigos.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SearchPage({
+  history,
+  onOpenGroup,
+  onOpenLive,
+  onOpenPage,
+  onOpenPost,
+  onOpenProfile,
+  onSearch,
+  results,
+}: {
+  history: string[];
+  onOpenGroup: (groupId: string) => void;
+  onOpenLive: (liveId: string) => void;
+  onOpenPage: (pageId: string) => void;
+  onOpenPost: (postId: string) => void;
+  onOpenProfile: (userId: string) => void;
+  onSearch: (query: string) => void;
+  results: SearchResults | null;
+}) {
+  return (
+    <section className="space-y-4">
+      <PageHeader
+        kicker="Buscar"
+        title={results ? `Resultados para "${results.query}"` : "Busqueda global"}
+        subtitle="Encuentra personas, paginas, grupos, publicaciones y lives desde un solo lugar."
+      />
+      {history.length > 0 && (
+        <div className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-black uppercase text-[#65736f]">Busquedas recientes</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {history.map((item) => (
+              <button className={secondaryButtonClass} key={item} type="button" onClick={() => onSearch(item)}>
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!results ? (
+        <EmptyText>Escribe algo en la barra superior y presiona Enter.</EmptyText>
+      ) : (
+        <>
+          <SearchSection title="Personas" empty="No encontramos personas.">
+            {results.people.map((person) => (
+              <button className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={person.id} type="button" onClick={() => onOpenProfile(person.id)}>
+                <Avatar name={person.name} src={person.avatar} size="md" />
+                <span>
+                  <span className="block font-black">{person.name}</span>
+                  {person.bio && <span className="block text-sm text-[#6d746f]">{person.bio}</span>}
+                </span>
+              </button>
+            ))}
+          </SearchSection>
+          <SearchSection title="Paginas" empty="No encontramos paginas.">
+            {results.pages.map((page) => (
+              <button className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={page.id} type="button" onClick={() => onOpenPage(page.id)}>
+                <Avatar name={page.name} src={page.avatar} size="md" />
+                <span>
+                  <span className="block font-black">{page.name}</span>
+                  <span className="block text-sm text-[#b8741a]">{page.category}</span>
+                </span>
+              </button>
+            ))}
+          </SearchSection>
+          <SearchSection title="Grupos" empty="No encontramos grupos.">
+            {results.groups.map((group) => (
+              <button className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={group.id} type="button" onClick={() => onOpenGroup(group.id)}>
+                <div className="size-11 overflow-hidden rounded-xl bg-[#17211f]">
+                  {group.cover && <img alt="" className="size-full object-cover" src={mediaSrc(group.cover)} />}
+                </div>
+                <span>
+                  <span className="block font-black">{group.name}</span>
+                  <span className="block text-sm text-[#6d746f]">{group.privacy}</span>
+                </span>
+              </button>
+            ))}
+          </SearchSection>
+          <SearchSection title="Publicaciones" empty="No encontramos publicaciones.">
+            {results.posts.map((post) => (
+              <button className="block w-full rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={post.id} type="button" onClick={() => onOpenPost(post.id)}>
+                <span className="block text-sm font-black">{post.authorName}</span>
+                <span className="mt-1 line-clamp-2 block text-sm text-[#53645f]">{post.content}</span>
+              </button>
+            ))}
+          </SearchSection>
+          <SearchSection title="Lives" empty="No encontramos lives.">
+            {results.lives.map((live) => (
+              <button className="block w-full rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={live.id} type="button" onClick={() => onOpenLive(live.id)}>
+                <span className="block text-sm font-black">{live.title}</span>
+                <span className="mt-1 block text-xs text-[#6d746f]">{live.hostName} · {live.status === "LIVE" ? "En vivo" : "Replay"}</span>
+              </button>
+            ))}
+          </SearchSection>
+        </>
+      )}
+    </section>
+  );
+}
+
+function SearchSection({ children, empty, title }: { children: ReactNode; empty: string; title: string }) {
+  const list = Children.toArray(children).filter(Boolean);
+  return (
+    <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-black uppercase text-[#65736f]">{title}</h2>
+      <div className="mt-3 space-y-1">{list.length ? list : <p className="text-sm text-[#6d746f]">{empty}</p>}</div>
+    </section>
+  );
+}
+
+function EventsPage({
+  events,
+  friends,
+  loading,
+  myGroups,
+  myPages,
+  onInvite,
+  onOpenProfile,
+  onRsvp,
+  onSubmit,
+}: {
+  events: SocialEvent[];
+  friends: User[];
+  loading: boolean;
+  myGroups: SocialGroup[];
+  myPages: SocialPage[];
+  onInvite: (event: FormEvent<HTMLFormElement>, eventId: string) => void;
+  onOpenProfile: (userId: string) => void;
+  onRsvp: (eventId: string, status: "GOING" | "INTERESTED") => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="space-y-4">
+      <PageHeader
+        kicker="Eventos"
+        title="Eventos"
+        subtitle="Crea eventos personales, de paginas o grupos; invita amigos y marca asistencia o interes."
+      />
+      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+          <h2 className="text-lg font-black">Crear evento</h2>
+          <div className="mt-4 space-y-3">
+            <input className={inputClass} name="title" placeholder="Nombre del evento" required />
+            <input className={inputClass} name="location" placeholder="Ubicacion" required />
+            <input className={inputClass} name="startsAt" required type="datetime-local" />
+            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Descripcion" />
+            <select className={inputClass} name="pageId">
+              <option value="">Evento personal</option>
+              {myPages.map((page) => <option key={page.id} value={page.id}>Evento de pagina: {page.name}</option>)}
+            </select>
+            <select className={inputClass} name="groupId">
+              <option value="">Sin grupo</option>
+              {myGroups.map((group) => <option key={group.id} value={group.id}>Evento de grupo: {group.name}</option>)}
+            </select>
+            <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+              Imagen del evento
+              <input className="mt-2 block w-full text-xs" name="imageFile" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
+            Crear evento
+          </button>
+        </form>
+        {events.length === 0 ? (
+          <EmptyText>Aun no hay eventos.</EmptyText>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {events.map((event) => (
+              <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={event.id}>
+                <div className="grid aspect-video place-items-center bg-[#17211f] text-sm font-black text-white/60">
+                  {event.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(event.imageUrl)} /> : "Evento"}
+                </div>
+                <div className="p-4">
+                  <p className="text-xs font-black uppercase text-[#b8741a]">
+                    {event.pageName ? `Pagina: ${event.pageName}` : event.groupName ? `Grupo: ${event.groupName}` : "Evento personal"}
+                  </p>
+                  <h2 className="mt-1 text-xl font-black">{event.title}</h2>
+                  <p className="mt-1 text-sm text-[#6d746f]">{new Date(event.startsAt).toLocaleString()} · {event.location}</p>
+                  {event.description && <p className="mt-3 text-sm text-[#53645f]">{event.description}</p>}
+                  <button className="mt-4" type="button" onClick={() => onOpenProfile(event.hostId)}>
+                    <PersonRow user={{ id: event.hostId, name: event.hostName, avatar: event.hostAvatar }} />
+                  </button>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button className={event.myStatus === "GOING" ? primaryButtonClass : secondaryButtonClass} type="button" onClick={() => onRsvp(event.id, "GOING")}>
+                      Asistire ({event.goingCount})
+                    </button>
+                    <button className={event.myStatus === "INTERESTED" ? primaryButtonClass : secondaryButtonClass} type="button" onClick={() => onRsvp(event.id, "INTERESTED")}>
+                      Me interesa ({event.interestedCount})
+                    </button>
+                  </div>
+                  <form className="mt-3 flex gap-2" onSubmit={(formEvent) => onInvite(formEvent, event.id)}>
+                    <select className={`${inputClass} min-w-0 flex-1`} name="userId" required>
+                      <option value="">Invitar amigo...</option>
+                      {friends.map((friend) => <option key={friend.id} value={friend.id}>{friend.name}</option>)}
+                    </select>
+                    <button className={secondaryButtonClass}>Invitar</button>
+                  </form>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MarketplacePage({
+  loading,
+  onContactSeller,
+  onOpenProfile,
+  onSubmit,
+  products,
+  viewerId,
+}: {
+  loading: boolean;
+  onContactSeller: (sellerId: string) => void;
+  onOpenProfile: (userId: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  products: MarketplaceProduct[];
+  viewerId: string;
+}) {
+  const categories = Array.from(new Set(products.map((product) => product.category))).sort();
+
+  return (
+    <section className="space-y-4">
+      <PageHeader
+        kicker="Marketplace"
+        title="Compra y venta"
+        subtitle="Publica productos con foto, precio, categoria y ubicacion. El contacto usa Messenger dentro de la app."
+      />
+      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+          <h2 className="text-lg font-black">Vender producto</h2>
+          <div className="mt-4 space-y-3">
+            <input className={inputClass} name="title" placeholder="Producto" required />
+            <input className={inputClass} name="category" placeholder="Categoria" />
+            <input className={inputClass} min="0" name="price" placeholder="Precio" required step="0.01" type="number" />
+            <input className={inputClass} name="location" placeholder="Ubicacion" required />
+            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Descripcion" />
+            <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+              Foto del producto
+              <input className="mt-2 block w-full text-xs" name="imageFile" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
+            Publicar producto
+          </button>
+        </form>
+        <div className="space-y-4">
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+              {categories.map((category) => (
+                <span className="rounded-full bg-[#ece7dc] px-3 py-1 text-xs font-black text-[#53645f]" key={category}>
+                  {category}
+                </span>
+              ))}
+            </div>
+          )}
+          {products.length === 0 ? (
+            <EmptyText>Aun no hay productos publicados.</EmptyText>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {products.map((product) => (
+                <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={product.id}>
+                  <div className="grid aspect-square place-items-center bg-[#17211f] text-sm font-black text-white/60">
+                    {product.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(product.imageUrl)} /> : "Sin foto"}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs font-black uppercase text-[#b8741a]">{product.category}</p>
+                    <h2 className="mt-1 text-lg font-black">{product.title}</h2>
+                    <p className="mt-1 text-xl font-black text-[#17211f]">{formatMoney(product.priceCents)}</p>
+                    <p className="mt-1 text-sm text-[#6d746f]">{product.location}</p>
+                    {product.description && <p className="mt-3 line-clamp-3 text-sm text-[#53645f]">{product.description}</p>}
+                    <button className="mt-4 flex items-center gap-2 text-left" type="button" onClick={() => onOpenProfile(product.sellerId)}>
+                      <Avatar name={product.sellerName} src={product.sellerAvatar} size="sm" />
+                      <span className="text-sm font-semibold">{product.sellerName}</span>
+                    </button>
+                    {product.sellerId !== viewerId && (
+                      <button className={`${primaryButtonClass} mt-4 w-full`} type="button" onClick={() => onContactSeller(product.sellerId)}>
+                        Enviar mensaje
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function formatMoney(priceCents: number) {
+  return new Intl.NumberFormat("es-MX", { currency: "MXN", style: "currency" }).format(priceCents / 100);
+}
+
+function GroupsPage({
+  groups,
+  loading,
+  myGroups,
+  onCreate,
+  onOpenGroup,
+  onToggleJoin,
+}: {
+  groups: SocialGroup[];
+  loading: boolean;
+  myGroups: SocialGroup[];
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onOpenGroup: (group: SocialGroup) => void;
+  onToggleJoin: (group: SocialGroup) => void;
+}) {
+  const myGroupIds = new Set(myGroups.map((group) => group.id));
+
+  return (
+    <section className="space-y-4">
+      <PageHeader kicker="Comunidades" title="Grupos" subtitle="Crea comunidades, unete a grupos y publica dentro de ellos." />
+      <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onCreate}>
+          <h2 className="text-lg font-black">Crear grupo</h2>
+          <div className="mt-4 space-y-3">
+            <input className={inputClass} name="name" placeholder="Nombre del grupo" required />
+            <textarea className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="description" placeholder="Descripcion" />
+            <select className={inputClass} name="privacy">
+              <option value="PUBLIC">Publico</option>
+              <option value="PRIVATE">Privado</option>
+            </select>
+            <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+              Portada
+              <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
+            Crear grupo
+          </button>
+        </form>
+
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Tus grupos</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {myGroups.length === 0 ? <EmptyText>Aun no perteneces a grupos.</EmptyText> : myGroups.map((group) => (
+                <GroupCard key={group.id} group={group} onOpen={onOpenGroup} onToggleJoin={onToggleJoin} />
+              ))}
+            </div>
+          </section>
+          <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explorar grupos</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {groups.length === 0 ? <EmptyText>No hay grupos todavia.</EmptyText> : groups.map((group) => (
+                <GroupCard key={group.id} group={{ ...group, joinedByMe: group.joinedByMe || myGroupIds.has(group.id) }} onOpen={onOpenGroup} onToggleJoin={onToggleJoin} />
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GroupCard({
+  group,
+  onOpen,
+  onToggleJoin,
+}: {
+  group: SocialGroup;
+  onOpen: (group: SocialGroup) => void;
+  onToggleJoin: (group: SocialGroup) => void;
+}) {
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-[#fffdf8] shadow-sm">
+      <button className="block h-28 w-full bg-[#17211f] text-left" type="button" onClick={() => onOpen(group)}>
+        {group.cover && <img alt="" className="size-full object-cover" src={mediaSrc(group.cover)} />}
+      </button>
+      <div className="p-4">
+        <button className="block text-left" type="button" onClick={() => onOpen(group)}>
+          <h3 className="text-lg font-black">{group.name}</h3>
+        </button>
+        <p className="mt-1 text-xs font-black uppercase text-[#b8741a]">{group.privacy}</p>
+        {group.description && <p className="mt-2 line-clamp-3 text-sm text-[#6d746f]">{group.description}</p>}
+        <p className="mt-3 text-xs text-[#8a8f8b]">{group.memberCount} miembros · {group.ownerName}</p>
+        <button className={`${group.joinedByMe ? secondaryButtonClass : primaryButtonClass} mt-3 w-full`} type="button" onClick={() => onToggleJoin(group)}>
+          {group.joinedByMe ? "Miembro" : "Unirme"}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function GroupDetail({
+  group,
+  onBack,
+  onCommentDelete,
+  onCommentEdit,
+  onCommentPost,
+  onCreatePost,
+  onDeletePost,
+  onEditPost,
+  onOpenProfile,
+  onReact,
+  onReportPost,
+  onShare,
+  onToggleJoin,
+  posts,
+  viewerId,
+}: {
+  group: SocialGroup;
+  onBack: () => void;
+  onCommentDelete: (commentId: string) => void;
+  onCommentEdit: (comment: Post["comments"][number]) => void;
+  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onCreatePost: (event: FormEvent<HTMLFormElement>) => void;
+  onDeletePost: (postId: string) => void;
+  onEditPost: (post: Post) => void;
+  onOpenProfile: (userId: string) => void;
+  onReact: (postId: string) => void;
+  onReportPost: (post: Post) => void;
+  onShare: (post: Post) => void;
+  onToggleJoin: (group: SocialGroup) => void;
+  posts: Post[];
+  viewerId: string;
+}) {
+  return (
+    <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <button className={secondaryButtonClass} type="button" onClick={onBack}>Volver a grupos</button>
+      <div className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm">
+        <div className="h-64 bg-[#17211f]">{group.cover && <img alt="" className="size-full object-cover" src={mediaSrc(group.cover)} />}</div>
+        <div className="p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-3xl font-black">{group.name}</h1>
+              <p className="mt-1 text-sm text-[#6d746f]">{group.memberCount} miembros · {group.privacy}</p>
+              {group.description && <p className="mt-3 max-w-3xl text-sm leading-6 text-[#53645f]">{group.description}</p>}
+            </div>
+            <button className={group.joinedByMe ? secondaryButtonClass : primaryButtonClass} type="button" onClick={() => onToggleJoin(group)}>
+              {group.joinedByMe ? "Miembro" : "Unirme"}
+            </button>
+          </div>
+        </div>
+      </div>
+      {group.joinedByMe && <GroupPostComposer group={group} onSubmit={onCreatePost} />}
+      {posts.length === 0 ? (
+        <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">Este grupo aun no tiene publicaciones.</p>
+      ) : (
+        <div className="space-y-4">{posts.map((post) => (
+          <FeedPost
+            key={post.id}
+            post={post}
+            viewerId={viewerId}
+            onComment={onCommentPost}
+            onCommentDelete={onCommentDelete}
+            onCommentEdit={onCommentEdit}
+            onDelete={onDeletePost}
+            onEdit={onEditPost}
+            onOpenProfile={onOpenProfile}
+            onReact={onReact}
+            onReport={onReportPost}
+            onShare={onShare}
+          />
+        ))}</div>
+      )}
+    </section>
+  );
+}
+
+function GroupPostComposer({ group, onSubmit }: { group: SocialGroup; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return (
+    <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+      <input name="groupId" type="hidden" value={group.id} />
+      <textarea className="min-h-24 w-full resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="content" placeholder={`Publicar en ${group.name}`} />
+      <div className="mt-3 flex justify-end border-t border-[#eee8dc] pt-3">
+        <button className={primaryButtonClass} type="submit">Publicar</button>
+      </div>
+    </form>
+  );
+}
+
+function PagesPage({
+  loading,
+  myPages,
+  onFollow,
+  onOpenPage,
+  pages,
+  onSubmit,
+}: {
+  loading: boolean;
+  myPages: SocialPage[];
+  onFollow: (pageId: string) => void;
+  onOpenPage: (page: SocialPage) => void;
+  pages: SocialPage[];
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const managedPageIds = new Set(myPages.map((page) => page.id));
+
+  return (
+    <section className="space-y-4">
+      <PageHeader
+        kicker="Comunidad"
+        title="Paginas"
+        subtitle="Crea presencia para marcas, creadores, negocios o proyectos con portada, foto e informacion publica."
+      />
+
+      <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
+          <h2 className="text-lg font-black">Crear pagina</h2>
+          <div className="mt-4 space-y-3">
+            <input
+              className="w-full rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
+              name="name"
+              placeholder="Nombre de la pagina"
+              required
+            />
+            <input
+              className="w-full rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
+              name="category"
+              placeholder="Categoria"
+              required
+            />
+            <textarea
+              className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
+              name="description"
+              placeholder="Descripcion"
+            />
+            <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+              Foto de perfil
+              <input className="mt-2 block w-full text-xs" name="avatarFile" type="file" accept="image/*" />
+            </label>
+            <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+              Portada
+              <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
+            </label>
+          </div>
+          <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
+            Crear pagina
+          </button>
+        </form>
+
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Tus paginas</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {myPages.length === 0 ? (
+                <EmptyText>Aun no administras paginas.</EmptyText>
+              ) : (
+                myPages.map((page) => <PageCard key={page.id} page={page} managed onOpen={onOpenPage} />)
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explorar paginas</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {pages.length === 0 ? (
+                <EmptyText>No hay paginas creadas todavia.</EmptyText>
+              ) : (
+                pages.map((page) => (
+                  <PageCard
+                    key={page.id}
+                    page={page}
+                    managed={managedPageIds.has(page.id)}
+                    onFollow={onFollow}
+                    onOpen={onOpenPage}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PageCard({
+  managed = false,
+  onFollow,
+  onOpen,
+  page,
+}: {
+  managed?: boolean;
+  onFollow?: (pageId: string) => void;
+  onOpen: (page: SocialPage) => void;
+  page: SocialPage;
+}) {
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-[#fffdf8] shadow-sm">
+      <button className="block h-28 w-full bg-[#17211f] text-left" type="button" onClick={() => onOpen(page)}>
+        {page.cover && <img alt="" className="size-full object-cover" src={mediaSrc(page.cover)} />}
+      </button>
+      <div className="p-4">
+        <button className="-mt-12 flex items-end gap-3 text-left" type="button" onClick={() => onOpen(page)}>
+          <Avatar name={page.name} src={page.avatar} size="lg" />
+          {managed && (
+            <span className="mb-1 rounded-full bg-[#f2c166] px-3 py-1 text-xs font-black text-[#17211f]">
+              Administrada por ti
+            </span>
+          )}
+        </button>
+        <button className="mt-3 block text-left" type="button" onClick={() => onOpen(page)}>
+          <h3 className="text-lg font-black">{page.name}</h3>
+        </button>
+        <p className="text-sm font-semibold text-[#b8741a]">{page.category}</p>
+        {page.description && <p className="mt-2 line-clamp-3 text-sm text-[#6d746f]">{page.description}</p>}
+        <p className="mt-3 text-xs text-[#8a8f8b]">
+          {page.followerCount} seguidores · Creada por {page.ownerName}
+        </p>
+        {!managed && onFollow && (
+          <button className={`${page.followedByMe ? secondaryButtonClass : primaryButtonClass} mt-3 w-full`} type="button" onClick={() => onFollow(page.id)}>
+            {page.followedByMe ? "Siguiendo" : "Seguir"}
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function PageDetail({
+  onBack,
+  onCommentDelete,
+  onCommentEdit,
+  onCommentPost,
+  onCreatePost,
+  onDeletePost,
+  onEditPost,
+  onFollow,
+  onOpenProfile,
+  onReact,
+  onReportPost,
+  onShare,
+  onUpdate,
+  page,
+  posts,
+  viewerId,
+}: {
+  onBack: () => void;
+  onCommentDelete: (commentId: string) => void;
+  onCommentEdit: (comment: Post["comments"][number]) => void;
+  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onCreatePost: (event: FormEvent<HTMLFormElement>) => void;
+  onDeletePost: (postId: string) => void;
+  onEditPost: (post: Post) => void;
+  onFollow: (pageId: string) => void;
+  onOpenProfile: (userId: string) => void;
+  onReact: (postId: string) => void;
+  onReportPost: (post: Post) => void;
+  onShare: (post: Post) => void;
+  onUpdate: (event: FormEvent<HTMLFormElement>, page: SocialPage) => void;
+  page: SocialPage;
+  posts: Post[];
+  viewerId: string;
+}) {
+  const managed = page.ownerId === viewerId;
+
+  return (
+    <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <button className={secondaryButtonClass} type="button" onClick={onBack}>
+        Volver a paginas
+      </button>
+      <div className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm">
+        <div className="h-64 bg-[#17211f]">
+          {page.cover && <img alt="" className="size-full object-cover" src={mediaSrc(page.cover)} />}
+        </div>
+        <div className="-mt-14 px-6 pb-6">
+          <div className="flex flex-col gap-4 border-b border-[#eee8dc] pb-5 md:flex-row md:items-end md:justify-between">
+            <div className="flex items-end gap-4">
+              <Avatar name={page.name} src={page.avatar} size="lg" />
+              <div className="pb-2">
+                <h1 className="text-3xl font-black text-[#17211f]">{page.name}</h1>
+                <p className="text-sm font-semibold text-[#b8741a]">{page.category}</p>
+                <p className="mt-1 text-sm text-[#6d746f]">
+                  {page.followerCount} seguidores · Administrada por {page.ownerName}
+                </p>
+              </div>
+            </div>
+            {managed ? (
+              <span className="rounded-xl bg-[#f2c166] px-4 py-2 text-sm font-black text-[#17211f]">
+                Administras esta pagina
+              </span>
+            ) : (
+              <button
+                className={page.followedByMe ? secondaryButtonClass : primaryButtonClass}
+                type="button"
+                onClick={() => onFollow(page.id)}
+              >
+                {page.followedByMe ? "Siguiendo" : "Seguir"}
+              </button>
+            )}
+          </div>
+          {page.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-[#53645f]">{page.description}</p>}
+        </div>
+      </div>
+
+      {managed && (
+        <>
+          <details className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer list-none text-sm font-black text-[#17211f]">
+              Editar informacion de la pagina
+            </summary>
+            <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={(event) => onUpdate(event, page)}>
+              <input
+                className={inputClass}
+                defaultValue={page.name}
+                name="name"
+                placeholder="Nombre"
+                required
+              />
+              <input
+                className={inputClass}
+                defaultValue={page.category}
+                name="category"
+                placeholder="Categoria"
+                required
+              />
+              <textarea
+                className={`${inputClass} min-h-24 resize-none md:col-span-2`}
+                defaultValue={page.description || ""}
+                name="description"
+                placeholder="Descripcion"
+              />
+              <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+                Cambiar foto de perfil
+                <input className="mt-2 block w-full text-xs" name="avatarFile" type="file" accept="image/*" />
+              </label>
+              <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
+                Cambiar portada
+                <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
+              </label>
+              <button className={`${primaryButtonClass} md:col-span-2`} type="submit">
+                Guardar cambios
+              </button>
+            </form>
+          </details>
+          <PagePostComposer page={page} onSubmit={onCreatePost} />
+        </>
+      )}
+
+      {posts.length === 0 ? (
+        <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
+          Esta pagina aun no tiene publicaciones.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {posts.map((post) => (
+            <FeedPost
+              key={post.id}
+              post={post}
+              viewerId={viewerId}
+              onComment={onCommentPost}
+              onCommentDelete={onCommentDelete}
+              onCommentEdit={onCommentEdit}
+              onDelete={onDeletePost}
+              onEdit={onEditPost}
+              onOpenProfile={onOpenProfile}
+              onReact={onReact}
+              onReport={onReportPost}
+              onShare={onShare}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PagePostComposer({
+  onSubmit,
+  page,
+}: {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  page: SocialPage;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
+
+  return (
+    <form
+      className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm"
+      onSubmit={(event) => {
+        void onSubmit(event);
+        setFileName("");
+        if (inputRef.current) {
+          inputRef.current.value = "";
+        }
+      }}
+    >
+      <input name="pageId" type="hidden" value={page.id} />
+      <div className="flex gap-3">
+        <Avatar name={page.name} src={page.avatar} size="md" />
+        <textarea
+          className="min-h-24 flex-1 resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
+          name="content"
+          placeholder={`Publicar como ${page.name}`}
+        />
+      </div>
+      <input
+        ref={inputRef}
+        accept="image/*,video/*"
+        className="hidden"
+        name="mediaFile"
+        type="file"
+        onChange={(event) => setFileName(event.currentTarget.files?.[0]?.name ?? "")}
+      />
+      {fileName && <p className="mt-3 rounded-xl bg-[#f7f5ef] px-3 py-2 text-xs font-semibold text-[#53645f]">{fileName}</p>}
+      <div className="mt-3 flex items-center justify-between border-t border-[#eee8dc] pt-3">
+        <div className="flex gap-2">
+          <button className={secondaryButtonClass} type="button" onClick={() => inputRef.current?.click()}>
+            Foto/video
+          </button>
+        </div>
+        <button className={primaryButtonClass} type="submit">
+          Publicar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function LivesPage({
+  lives,
+  liveMessages,
+  onOpenProfile,
+  viewerId,
+  onDelete,
+  onEdit,
+  onSendMessage,
+}: {
+  lives: LiveSession[];
+  liveMessages: Record<string, LiveChatMessage[]>;
+  onOpenProfile: (userId: string) => void;
+  viewerId: string;
+  onDelete: (liveId: string) => void;
+  onEdit: (live: LiveSession) => void;
+  onSendMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filteredLives = lives.filter((live) => {
+    const text = `${live.title} ${live.hostName}`.toLowerCase();
+    return text.includes(query.trim().toLowerCase());
+  });
+
+  return (
+    <section className="space-y-4">
       <PageHeader
         kicker="Video"
-        title="Lives"
-        subtitle="Tus transmisiones activas y grabaciones quedan guardadas para volver a verlas."
+        title="Lives activos"
+        subtitle="Busca personas que esten transmitiendo ahora y entra al chat en vivo."
       />
-      {lives.length === 0 ? (
+      <input
+        className="w-full rounded-2xl border border-[#ded7c9] bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#49625b]"
+        placeholder="Buscar por nombre o titulo del live..."
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {filteredLives.length === 0 ? (
         <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
-          Aun no tienes lives. Inicia uno desde el compositor del inicio.
+          No hay lives activos que coincidan con tu busqueda.
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {lives.map((live) => (
-            <LiveCard key={live.id} live={live} />
+          {filteredLives.map((live) => (
+            <LiveCard
+              key={live.id}
+              live={live}
+              messages={liveMessages[live.id] ?? []}
+              onOpenProfile={onOpenProfile}
+              viewerId={viewerId}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onSendMessage={onSendMessage}
+            />
           ))}
         </div>
       )}
@@ -1608,16 +4184,58 @@ function PageHeader({
   );
 }
 
-function LiveCard({ live }: { live: LiveSession }) {
+function LiveCard({
+  live,
+  messages = [],
+  onOpenProfile,
+  viewerId,
+  onDelete,
+  onEdit,
+  onSendMessage,
+}: {
+  live: LiveSession;
+  messages?: LiveChatMessage[];
+  onOpenProfile?: (userId: string) => void;
+  viewerId?: string;
+  onDelete?: (liveId: string) => void;
+  onEdit?: (live: LiveSession) => void;
+  onSendMessage?: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
+}) {
+  const canManage = viewerId === live.hostId;
+
   return (
     <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <PersonRow user={{ name: live.hostName, avatar: live.hostAvatar }} />
-        <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
-          live.status === "LIVE" ? "bg-red-600 text-white" : "bg-[#ece7dc] text-[#17211f]"
-        }`}>
-          {live.status === "LIVE" ? "En vivo" : "Replay"}
-        </span>
+        <PersonRow
+          user={{ id: live.hostId, name: live.hostName, avatar: live.hostAvatar }}
+          onOpenProfile={onOpenProfile}
+        />
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <ActionMenu
+              items={[
+                {
+                  icon: "E",
+                  label: "Editar live",
+                  description: "Cambiar el titulo del live.",
+                  onClick: () => onEdit?.(live),
+                },
+                {
+                  destructive: true,
+                  icon: "D",
+                  label: "Eliminar live",
+                  description: "Borrar este live de tu perfil.",
+                  onClick: () => onDelete?.(live.id),
+                },
+              ]}
+            />
+          )}
+          <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
+            live.status === "LIVE" ? "bg-red-600 text-white" : "bg-[#ece7dc] text-[#17211f]"
+          }`}>
+            {live.status === "LIVE" ? "En vivo" : "Replay"}
+          </span>
+        </div>
       </div>
       {live.recordingUrl ? (
         <video
@@ -1625,15 +4243,99 @@ function LiveCard({ live }: { live: LiveSession }) {
           controls
           src={mediaSrc(live.recordingUrl)}
         />
+      ) : live.latestFrameUrl ? (
+        <img
+          alt=""
+          className="aspect-video w-full rounded-xl bg-black object-cover"
+          src={mediaSrc(live.latestFrameUrl)}
+        />
       ) : (
         <div className="grid aspect-video place-items-center rounded-xl bg-[#17211f] text-sm font-bold text-white/70">
-          {live.status === "LIVE" ? "Live activo" : "Sin grabacion"}
+          {live.status === "LIVE" ? "Esperando imagen del live" : "Sin grabacion"}
         </div>
       )}
       <h2 className="mt-3 font-black">{live.title}</h2>
       <p className="mt-1 text-xs text-[#6d746f]">{new Date(live.startedAt).toLocaleString()}</p>
+      <div className="mt-4 border-t border-[#eee8dc] pt-3">
+        <LiveChatPanel
+          compact
+          live={live}
+          messages={messages}
+          onOpenProfile={onOpenProfile}
+          onSend={onSendMessage}
+        />
+      </div>
     </article>
   );
+}
+
+function LiveChatPanel({
+  compact = false,
+  live,
+  messages,
+  onOpenProfile,
+  onSend,
+}: {
+  compact?: boolean;
+  live: LiveSession;
+  messages: LiveChatMessage[];
+  onOpenProfile?: (userId: string) => void;
+  onSend?: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
+}) {
+  const canSend = live.status === "LIVE" && Boolean(onSend);
+  const visibleMessages = compact ? messages.slice(-5) : messages;
+
+  return (
+    <section className={compact ? "" : "flex h-full min-h-[360px] flex-col bg-[#f8faf9]"}>
+      <div className={compact ? "mb-2 flex items-center justify-between" : "border-b border-[#e4e6eb] p-4"}>
+        <h3 className="text-sm font-black text-[#050505]">Chat en vivo</h3>
+        <p className="text-xs font-semibold text-[#65676b]">{messages.length} mensajes</p>
+      </div>
+      <div className={`${compact ? "max-h-44" : "min-h-0 flex-1"} space-y-3 overflow-y-auto ${compact ? "" : "p-4"}`}>
+        {visibleMessages.length === 0 ? (
+          <p className="rounded-xl bg-white p-3 text-sm text-[#65676b]">
+            Aun no hay mensajes en este live.
+          </p>
+        ) : (
+          visibleMessages.map((message) => (
+            <div className="flex gap-2" key={message.id}>
+              <button type="button" onClick={() => onOpenProfile?.(message.authorId)}>
+                <Avatar name={message.authorName} src={message.authorAvatar} size="sm" />
+              </button>
+              <div className="min-w-0 rounded-xl bg-white px-3 py-2 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-xs font-black text-[#050505]">{message.authorName}</p>
+                  <span className="text-[11px] font-semibold text-[#8a8d91]">
+                    {formatLiveOffset(message.offsetMs)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-[#1c1e21]">{message.content}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      {canSend && (
+        <form className={`${compact ? "mt-3" : "border-t border-[#e4e6eb] p-3"} flex gap-2`} onSubmit={(event) => onSend?.(event, live.id)}>
+          <input
+            className="min-w-0 flex-1 rounded-full border border-[#ccd0d5] bg-white px-4 py-2 text-sm outline-none focus:border-[#1877f2]"
+            name="message"
+            placeholder="Escribe en el chat..."
+          />
+          <button className="rounded-full bg-[#1877f2] px-4 py-2 text-sm font-black text-white" type="submit">
+            Enviar
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function formatLiveOffset(offsetMs: number) {
+  const totalSeconds = Math.max(0, Math.floor(offsetMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
@@ -1835,86 +4537,387 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
   );
 }
 
+function ProfileMediaGrid({ empty, posts }: { empty: string; posts: Post[] }) {
+  if (posts.length === 0) {
+    return <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">{empty}</p>;
+  }
+
+  return (
+    <section className="rounded-lg bg-white p-4 shadow-sm">
+      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+        {posts.map((post) => (
+          post.mediaType === "VIDEO" ? (
+            <video className="aspect-square w-full rounded-lg bg-black object-cover" controls key={post.id} src={mediaSrc(post.mediaUrl as string)} />
+          ) : (
+            <img alt="" className="aspect-square w-full rounded-lg object-cover" key={post.id} src={mediaSrc(post.mediaUrl as string)} />
+          )
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProfileList({ children, empty }: { children: ReactNode; empty: string }) {
+  const items = Children.toArray(children).filter(Boolean);
+  return (
+    <section className="rounded-lg bg-white p-4 shadow-sm">
+      {items.length ? <div className="grid gap-3 md:grid-cols-2">{items}</div> : <p className="p-4 text-center text-sm text-[#65676b]">{empty}</p>}
+    </section>
+  );
+}
+
 function ProfilePage({
   error,
+  friends,
   lives,
+  liveMessages,
   loading,
+  myGroups,
+  myPages,
+  onDeleteLive,
+  onDeletePost,
+  onEditLive,
+  onEditPost,
+  onOpenProfile,
+  onSendLiveMessage,
   posts,
   session,
   onSubmit,
 }: {
   error: string;
+  friends: User[];
   lives: LiveSession[];
+  liveMessages: Record<string, LiveChatMessage[]>;
   loading: boolean;
+  myGroups: SocialGroup[];
+  myPages: SocialPage[];
+  onDeleteLive: (liveId: string) => void;
+  onDeletePost: (postId: string) => void;
+  onEditLive: (live: LiveSession) => void;
+  onEditPost: (post: Post) => void;
+  onOpenProfile: (userId: string) => void;
+  onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
   posts: Post[];
   session: Session;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [tab, setTab] = useState<"posts" | "photos" | "videos" | "friends" | "pages" | "groups" | "lives">("posts");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const cover = coverPreview || (session.user.cover ? mediaSrc(session.user.cover) : "");
+  const avatar = avatarPreview || session.user.avatar;
+
+  function preview(setter: (value: string | null) => void) {
+    return (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      setter(file ? URL.createObjectURL(file) : null);
+    };
+  }
+
   return (
-    <section className="space-y-4 lg:col-span-2">
-      <div className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm">
-        <div className="h-64 bg-[#17211f]" />
-        <div className="-mt-16 px-6 pb-6">
-          <div className="flex flex-col gap-4 border-b border-[#eee8dc] pb-5 md:flex-row md:items-end md:justify-between">
-            <div className="flex items-end gap-4">
-              <Avatar name={session.user.name} src={session.user.avatar} size="lg" />
-              <div className="pb-3">
-                <h1 className="text-3xl font-black">{session.user.name}</h1>
-                <p className="text-sm text-[#6d746f]">{session.user.email}</p>
-                {session.user.bio && <p className="mt-2 max-w-2xl text-sm">{session.user.bio}</p>}
+    <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <div className="overflow-hidden rounded-b-lg bg-white shadow-sm">
+        <div className="relative h-[220px] bg-[#d8dce3] md:h-[360px]">
+          {cover ? (
+            <img alt="" className="size-full object-cover" src={cover} />
+          ) : (
+            <div className="size-full bg-gradient-to-b from-[#eef1f5] to-[#9aa5b5]" />
+          )}
+          <label className="absolute bottom-4 right-4 cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-bold text-[#1c1e21] shadow hover:bg-[#f0f2f5]">
+            Editar foto de portada
+            <input className="hidden" form="profile-edit-form" name="coverFile" type="file" accept="image/*" onChange={preview(setCoverPreview)} />
+          </label>
+        </div>
+
+        <div className="px-4 pb-0 md:px-8">
+          <div className="-mt-9 flex flex-col gap-3 border-b border-[#dadde1] pb-4 md:-mt-12 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col items-center gap-3 text-center md:flex-row md:text-left">
+              <div className="relative">
+                <Avatar name={session.user.name} src={avatar} size="lg" />
+                <label className="absolute bottom-2 right-2 grid size-9 cursor-pointer place-items-center rounded-full bg-[#e4e6eb] text-lg font-black text-[#1c1e21] shadow hover:bg-[#d8dadf]">
+                  +
+                  <input className="hidden" form="profile-edit-form" name="avatarFile" type="file" accept="image/*" onChange={preview(setAvatarPreview)} />
+                </label>
+              </div>
+              <div className="pb-2">
+                <h1 className="text-3xl font-black text-[#050505] md:text-4xl">{session.user.name}</h1>
+                <p className="text-sm font-semibold text-[#65676b]">
+                  {posts.length} publicaciones · {lives.length} lives
+                </p>
+                {session.user.bio && <p className="mt-2 max-w-2xl text-[15px] text-[#050505]">{session.user.bio}</p>}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold text-[#6d746f]">
-              <span className="rounded-xl bg-[#f4efe5] px-4 py-3">{posts.length} posts</span>
-              <span className="rounded-xl bg-[#f4efe5] px-4 py-3">{lives.length} lives</span>
-              <span className="rounded-xl bg-[#f4efe5] px-4 py-3">Sepolia</span>
-            </div>
+            <button className="rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => setEditOpen(true)}>
+              Editar perfil
+            </button>
           </div>
 
-          <form className="mt-5 grid gap-3 rounded-2xl bg-[#f7f5ef] p-4" onSubmit={onSubmit}>
-            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Editar perfil</h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="text-sm font-semibold">
-                Nombre
-                <input className={inputClass} defaultValue={session.user.name} name="name" required />
-              </label>
-              <label className="text-sm font-semibold">
-                Avatar URL
-                <input className={inputClass} defaultValue={session.user.avatar ?? ""} name="avatar" type="url" />
-              </label>
-            </div>
-            <label className="text-sm font-semibold">
-              Bio
-              <textarea className={`${inputClass} min-h-24 resize-none`} defaultValue={session.user.bio ?? ""} name="bio" />
-            </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button className={`${primaryButtonClass} w-full md:w-fit`} disabled={loading}>
-              {loading ? "Guardando..." : "Guardar cambios"}
+          <nav className="flex gap-1 py-1 text-sm font-bold text-[#65676b]">
+            <button className={`rounded-md px-5 py-3 ${tab === "posts" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("posts")}>
+              Publicaciones
             </button>
-          </form>
+            <button className={`rounded-md px-5 py-3 ${tab === "photos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("photos")}>
+              Fotos
+            </button>
+            <button className={`rounded-md px-5 py-3 ${tab === "videos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("videos")}>
+              Videos
+            </button>
+            <button className={`rounded-md px-5 py-3 ${tab === "friends" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("friends")}>
+              Amigos
+            </button>
+            <button className={`rounded-md px-5 py-3 ${tab === "pages" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("pages")}>
+              Paginas
+            </button>
+            <button className={`rounded-md px-5 py-3 ${tab === "groups" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("groups")}>
+              Grupos
+            </button>
+            <button className={`rounded-md px-5 py-3 ${tab === "lives" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("lives")}>
+              Lives
+            </button>
+          </nav>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-4">
-          <h2 className="px-2 text-sm font-black uppercase tracking-wide text-[#65736f]">Publicaciones</h2>
-          {posts.length === 0 ? (
-            <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
-              Aun no tienes publicaciones.
-            </p>
-          ) : (
-            posts.map((post) => <ProfilePostCard key={post.id} post={post} />)
-          )}
+      {editOpen && (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/55 px-4">
+          <form id="profile-edit-form" className="w-full max-w-xl rounded-lg bg-white p-4 shadow-2xl" onSubmit={onSubmit}>
+            <div className="mb-4 flex items-center justify-between border-b border-[#dadde1] pb-3">
+              <h2 className="text-xl font-black text-[#050505]">Editar perfil</h2>
+              <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={() => setEditOpen(false)}>
+                x
+              </button>
+            </div>
+            <input name="avatar" type="hidden" value={session.user.avatar ?? ""} />
+            <input name="cover" type="hidden" value={session.user.cover ?? ""} />
+            <label className="text-sm font-bold text-[#050505]">
+              Nombre
+              <input className={inputClass} defaultValue={session.user.name} name="name" required />
+            </label>
+            <label className="mt-3 block text-sm font-bold text-[#050505]">
+              Bio
+              <textarea className={`${inputClass} min-h-28 resize-none`} defaultValue={session.user.bio ?? ""} name="bio" />
+            </label>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className={secondaryButtonClass}>
+                Subir foto de perfil
+                <input className="hidden" name="avatarFile" type="file" accept="image/*" onChange={preview(setAvatarPreview)} />
+              </label>
+              <label className={secondaryButtonClass}>
+                Subir portada
+                <input className="hidden" name="coverFile" type="file" accept="image/*" onChange={preview(setCoverPreview)} />
+              </label>
+            </div>
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            <button className="mt-4 w-full rounded-md bg-[#1877f2] px-5 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" disabled={loading}>
+              {loading ? "Guardando..." : "Guardar"}
+            </button>
+          </form>
         </div>
+      )}
 
-        <div className="space-y-3">
-          <h2 className="px-2 text-sm font-black uppercase tracking-wide text-[#65736f]">Lives</h2>
+      {tab === "photos" ? (
+        <ProfileMediaGrid empty="Aun no tienes fotos." posts={posts.filter((post) => post.mediaType === "IMAGE" && post.mediaUrl)} />
+      ) : tab === "videos" ? (
+        <ProfileMediaGrid empty="Aun no tienes videos." posts={posts.filter((post) => post.mediaType === "VIDEO" && post.mediaUrl)} />
+      ) : tab === "friends" ? (
+        <ProfileList empty="Aun no tienes amigos agregados.">
+          {friends.map((friend) => (
+            <PersonRow key={friend.id} user={friend} onOpenProfile={onOpenProfile} />
+          ))}
+        </ProfileList>
+      ) : tab === "pages" ? (
+        <ProfileList empty="Aun no administras paginas.">
+          {myPages.map((page) => (
+            <div className="flex items-center gap-3" key={page.id}>
+              <Avatar name={page.name} src={page.avatar} size="md" />
+              <div>
+                <p className="font-black">{page.name}</p>
+                <p className="text-sm text-[#6d746f]">{page.category}</p>
+              </div>
+            </div>
+          ))}
+        </ProfileList>
+      ) : tab === "groups" ? (
+        <ProfileList empty="Aun no perteneces a grupos.">
+          {myGroups.map((group) => (
+            <div className="flex items-center gap-3" key={group.id}>
+              <div className="grid size-11 place-items-center rounded-xl bg-[#17211f] text-sm font-black text-[#f2c166]">G</div>
+              <div>
+                <p className="font-black">{group.name}</p>
+                <p className="text-sm text-[#6d746f]">{group.memberCount} miembros</p>
+              </div>
+            </div>
+          ))}
+        </ProfileList>
+      ) : tab === "posts" ? (
+        <div className="grid gap-4 md:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="space-y-4">
+            <section className="rounded-lg bg-white p-4 shadow-sm">
+              <h2 className="text-xl font-black text-[#050505]">Intro</h2>
+              <p className="mt-3 text-center text-[15px] text-[#050505]">
+                {session.user.bio || "Agrega una bio para contar mas sobre ti."}
+              </p>
+              <button className="mt-4 w-full rounded-md bg-[#e4e6eb] py-2 text-sm font-bold text-[#050505]" type="button" onClick={() => setEditOpen(true)}>
+                Editar detalles
+              </button>
+            </section>
+            <section className="rounded-lg bg-white p-4 shadow-sm">
+              <h2 className="text-xl font-black text-[#050505]">Fotos</h2>
+              <div className="mt-3 grid grid-cols-3 gap-1 overflow-hidden rounded-lg">
+                {posts.filter((post) => post.mediaType === "IMAGE" && post.mediaUrl).slice(0, 9).map((post) => (
+                  <img alt="" className="aspect-square w-full object-cover" key={post.id} src={mediaSrc(post.mediaUrl as string)} />
+                ))}
+              </div>
+            </section>
+          </aside>
+          <div className="space-y-4">
+            {posts.length === 0 ? (
+              <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
+                Aun no tienes publicaciones.
+              </p>
+            ) : (
+              posts.map((post) => (
+                <ProfilePostCard
+                  key={post.id}
+                  post={post}
+                  onDelete={onDeletePost}
+                  onEdit={onEditPost}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
           {lives.length === 0 ? (
-            <p className="rounded-2xl border border-[#ded7c9] bg-white p-5 text-sm text-[#6d746f] shadow-sm">
+            <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
               Aun no tienes lives guardados.
             </p>
           ) : (
-            lives.map((live) => <LiveCard key={live.id} live={live} />)
+            lives.map((live) => (
+              <LiveCard
+                key={live.id}
+                live={live}
+                messages={liveMessages[live.id] ?? []}
+                onOpenProfile={onOpenProfile}
+                viewerId={session.user.id}
+                onDelete={onDeleteLive}
+                onEdit={onEditLive}
+                onSendMessage={onSendLiveMessage}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PublicProfilePage({
+  liveMessages,
+  profile,
+  viewerId,
+  onAddFriend,
+  onBlock,
+  onOpenProfile,
+  onSendLiveMessage,
+}: {
+  liveMessages: Record<string, LiveChatMessage[]>;
+  profile: PublicProfile;
+  viewerId: string;
+  onAddFriend: (userId: string) => void;
+  onBlock: (userId: string) => void;
+  onOpenProfile: (userId: string) => void;
+  onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
+}) {
+  const relationshipText = {
+    SELF: "Tu perfil",
+    FRIEND: "Amigos",
+    REQUEST_SENT: "Solicitud enviada",
+    REQUEST_RECEIVED: "Te envio solicitud",
+    NONE: "Agregar amigo",
+  }[profile.relationship];
+
+  return (
+    <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <div className="overflow-hidden rounded-b-lg bg-white shadow-sm">
+        <div className="h-[240px] bg-gradient-to-b from-[#dfe5ea] to-[#8c98a6]" />
+        <div className="-mt-12 px-6 pb-5">
+          <div className="flex flex-col gap-4 border-b border-[#dadde1] pb-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex items-end gap-4">
+              <Avatar name={profile.user.name} src={profile.user.avatar} size="lg" />
+              <div className="pb-2">
+                <h1 className="text-3xl font-black text-[#050505]">{profile.user.name}</h1>
+                {profile.user.bio && <p className="mt-1 text-sm text-[#65676b]">{profile.user.bio}</p>}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={profile.relationship === "NONE" ? "rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white" : "rounded-md bg-[#e4e6eb] px-5 py-2.5 text-sm font-bold text-[#050505]"}
+                disabled={profile.relationship !== "NONE"}
+                type="button"
+                onClick={() => onAddFriend(profile.user.id)}
+              >
+                {relationshipText}
+              </button>
+              {profile.relationship !== "SELF" && (
+                <button
+                  className="rounded-md bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100"
+                  type="button"
+                  onClick={() => onBlock(profile.user.id)}
+                >
+                  Bloquear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <section className="rounded-lg bg-white p-4 shadow-sm">
+            <h2 className="text-xl font-black text-[#050505]">Intro</h2>
+            <p className="mt-3 text-[15px] text-[#050505]">{profile.user.bio || "Sin bio por ahora."}</p>
+          </section>
+          <section className="rounded-lg bg-white p-4 shadow-sm">
+            <h2 className="text-xl font-black text-[#050505]">Lives</h2>
+            <p className="mt-2 text-sm text-[#65676b]">{profile.lives.length} lives publicados</p>
+          </section>
+        </aside>
+        <div className="space-y-4">
+          {profile.lives.map((live) => (
+            <LiveCard
+              key={live.id}
+              live={live}
+              messages={liveMessages[live.id] ?? []}
+              onOpenProfile={onOpenProfile}
+              viewerId={viewerId}
+              onSendMessage={onSendLiveMessage}
+            />
+          ))}
+          {profile.posts.length === 0 ? (
+            <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
+              Esta persona aun no tiene publicaciones.
+            </p>
+          ) : (
+            profile.posts.map((post) => (
+              <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" key={post.id}>
+                <button className="flex items-center gap-3 text-left" type="button" onClick={() => onOpenProfile(post.author.id)}>
+                  <Avatar name={(post.page ?? post.author).name} src={(post.page ?? post.author).avatar} size="md" />
+                  <div>
+                    <h2 className="text-sm font-semibold">{(post.page ?? post.author).name}</h2>
+                    <p className="text-xs text-[#6d746f]">
+                      {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+                      {new Date(post.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </button>
+                {post.content && <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>}
+                {post.mediaUrl && <PostMedia type={post.mediaType} url={post.mediaUrl} />}
+              </article>
+            ))
           )}
         </div>
       </div>
@@ -1922,15 +4925,47 @@ function ProfilePage({
   );
 }
 
-function ProfilePostCard({ post }: { post: Post }) {
+function ProfilePostCard({
+  post,
+  onDelete,
+  onEdit,
+}: {
+  post: Post;
+  onDelete: (postId: string) => void;
+  onEdit: (post: Post) => void;
+}) {
+  const actor = post.page ?? post.author;
+
   return (
     <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <Avatar name={post.author.name} src={post.author.avatar} size="md" />
-        <div>
-          <h2 className="text-sm font-semibold">{post.author.name}</h2>
-          <p className="text-xs text-[#6d746f]">{new Date(post.createdAt).toLocaleString()}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Avatar name={actor.name} src={actor.avatar} size="md" />
+          <div>
+            <h2 className="text-sm font-semibold">{actor.name}</h2>
+            <p className="text-xs text-[#6d746f]">
+              {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+              {new Date(post.createdAt).toLocaleString()}
+            </p>
+          </div>
         </div>
+        <ActionMenu
+          items={[
+            {
+              icon: "E",
+              label: "Editar publicacion",
+              description: "Cambiar el texto de esta publicacion.",
+              onClick: () => onEdit(post),
+            },
+            {
+              destructive: true,
+              icon: "D",
+              label: "Eliminar publicacion",
+              description: "Quitarla de tu perfil y del inicio.",
+              onClick: () => onDelete(post.id),
+            },
+          ]}
+        />
       </div>
       {post.content && <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>}
       {post.mediaUrl && <PostMedia type={post.mediaType} url={post.mediaUrl} />}
@@ -2004,17 +5039,299 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function PersonRow({ user }: { user: User | Pick<User, "name" | "avatar"> }) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
+function PersonRow({
+  user,
+  onOpenProfile,
+}: {
+  user: Pick<User, "id" | "name" | "avatar"> | Pick<User, "name" | "avatar">;
+  onOpenProfile?: (userId: string) => void;
+}) {
+  const content = (
+    <>
       <Avatar name={user.name} src={user.avatar} size="sm" />
       <p className="truncate text-sm font-semibold">{user.name}</p>
-    </div>
+    </>
   );
+
+  if ("id" in user && onOpenProfile) {
+    return (
+      <button className="flex min-w-0 items-center gap-3 text-left" type="button" onClick={() => onOpenProfile(user.id)}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="flex min-w-0 items-center gap-3">{content}</div>;
 }
 
 function EmptyText({ children }: { children: React.ReactNode }) {
   return <p className="px-2 text-sm text-[#6d746f]">{children}</p>;
+}
+
+function EditContentModal({
+  loading,
+  target,
+  onClose,
+  onSubmit,
+}: {
+  loading: boolean;
+  target: EditableTarget;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const multiline = target.kind !== "live";
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
+      <form className="w-full max-w-lg rounded-lg bg-white p-4 shadow-2xl" onSubmit={onSubmit}>
+        <div className="flex items-center justify-between border-b border-[#dadde1] pb-3">
+          <h2 className="text-xl font-black text-[#050505]">{target.title}</h2>
+          <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>
+            x
+          </button>
+        </div>
+        {multiline ? (
+          <textarea
+            autoFocus
+            className="mt-4 min-h-36 w-full resize-none rounded-lg border border-[#ccd0d5] bg-white px-3 py-3 text-[15px] outline-none focus:border-[#1877f2]"
+            defaultValue={target.value}
+            name="value"
+            placeholder="Escribe el texto..."
+          />
+        ) : (
+          <input
+            autoFocus
+            className="mt-4 w-full rounded-lg border border-[#ccd0d5] bg-white px-3 py-3 text-[15px] outline-none focus:border-[#1877f2]"
+            defaultValue={target.value}
+            name="value"
+            placeholder="Titulo"
+            required
+          />
+        )}
+        <div className="mt-4 flex justify-end gap-2 border-t border-[#dadde1] pt-3">
+          <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="rounded-md bg-[#1877f2] px-4 py-2 text-sm font-bold text-white disabled:opacity-60" disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function SharePostModal({
+  friends,
+  loading,
+  myPages,
+  onClose,
+  onMessenger,
+  onShare,
+  post,
+}: {
+  friends: User[];
+  loading: boolean;
+  myPages: SocialPage[];
+  onClose: () => void;
+  onMessenger: (event: FormEvent<HTMLFormElement>) => void;
+  onShare: (event: FormEvent<HTMLFormElement>) => void;
+  post: Post;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
+      <section className="w-full max-w-xl rounded-lg bg-white p-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#dadde1] pb-3">
+          <h2 className="text-xl font-black text-[#050505]">Compartir publicacion</h2>
+          <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>
+            x
+          </button>
+        </div>
+        <div className="mt-4 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3">
+          <p className="text-sm font-black">{(post.page ?? post.author).name}</p>
+          <p className="mt-1 line-clamp-3 text-sm text-[#53645f]">{post.content || "Publicacion con media"}</p>
+        </div>
+        <form className="mt-4 space-y-3" onSubmit={onShare}>
+          <textarea className={`${inputClass} min-h-24 resize-none`} name="content" placeholder="Agrega un comentario..." />
+          <select className={inputClass} name="pageId">
+            <option value="">Compartir en mi perfil</option>
+            {myPages.map((page) => (
+              <option key={page.id} value={page.id}>Compartir como {page.name}</option>
+            ))}
+          </select>
+          <button className={`${primaryButtonClass} w-full`} disabled={loading}>
+            Compartir
+          </button>
+        </form>
+        <form className="mt-4 border-t border-[#dadde1] pt-4" onSubmit={onMessenger}>
+          <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+            <input className={inputClass} name="content" placeholder="Mensaje opcional" />
+            <select className={inputClass} name="peerId" required>
+              <option value="">Enviar a...</option>
+              {friends.map((friend) => (
+                <option key={friend.id} value={friend.id}>{friend.name}</option>
+              ))}
+            </select>
+          </div>
+          <button className={`${secondaryButtonClass} mt-3 w-full`} disabled={loading}>
+            Enviar por Messenger
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ReportPostModal({
+  loading,
+  onClose,
+  onReport,
+  post,
+}: {
+  loading: boolean;
+  onClose: () => void;
+  onReport: (event: FormEvent<HTMLFormElement>) => void;
+  post: Post;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
+      <section className="w-full max-w-md rounded-lg bg-white p-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#dadde1] pb-3">
+          <h2 className="text-xl font-black text-[#050505]">Reportar publicacion</h2>
+          <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>
+            x
+          </button>
+        </div>
+        <p className="mt-3 line-clamp-3 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3 text-sm text-[#53645f]">
+          {post.content || "Publicacion con media"}
+        </p>
+        <form className="mt-4 space-y-3" onSubmit={onReport}>
+          <textarea className={`${inputClass} min-h-24 resize-none`} name="reason" placeholder="Describe el problema..." required />
+          <div className="flex justify-end gap-2">
+            <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
+              Cancelar
+            </button>
+            <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60" disabled={loading}>
+              {loading ? "Enviando..." : "Reportar"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({
+  loading,
+  target,
+  onClose,
+  onConfirm,
+}: {
+  loading: boolean;
+  target: DeleteTarget;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
+      <section className="w-full max-w-md rounded-lg bg-white p-4 shadow-2xl">
+        <h2 className="text-xl font-black text-[#050505]">{target.title}</h2>
+        <p className="mt-2 text-sm text-[#65676b]">{target.description}</p>
+        <div className="mt-5 flex justify-end gap-2 border-t border-[#dadde1] pt-3">
+          <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            disabled={loading}
+            type="button"
+            onClick={onConfirm}
+          >
+            {loading ? "Eliminando..." : "Eliminar"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type ActionMenuItem = {
+  description: string;
+  destructive?: boolean;
+  icon: string;
+  label: string;
+  onClick: () => void;
+};
+
+function ActionMenu({
+  align = "right",
+  items,
+  variant = "light",
+}: {
+  align?: "left" | "right";
+  items: ActionMenuItem[];
+  variant?: "dark" | "light";
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <details
+      className="group relative"
+      open={open}
+      onToggle={(event) => {
+        if (event.currentTarget.open) {
+          document.querySelectorAll("details[open]").forEach((element) => {
+            if (element !== event.currentTarget && element instanceof HTMLDetailsElement) {
+              element.open = false;
+            }
+          });
+        }
+
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      <summary
+        className={`grid size-8 cursor-pointer list-none place-items-center rounded-full text-base font-black leading-none marker:hidden ${
+          variant === "dark"
+            ? "bg-white/15 text-white hover:bg-white/25"
+            : "bg-[#f0f2f5] text-[#050505] hover:bg-[#e4e6eb]"
+        }`}
+      >
+        ...
+      </summary>
+      <div
+        className={`absolute top-9 z-50 w-56 max-w-[calc(100vw-32px)] rounded-lg border border-[#dadde1] bg-white p-1.5 text-[#050505] shadow-[0_8px_24px_rgba(0,0,0,0.2)] ${
+          align === "right" ? "right-0" : "left-0"
+        }`}
+      >
+        {items.map((item) => (
+          <button
+            className="flex w-full gap-2 rounded-md p-2 text-left hover:bg-[#f0f2f5]"
+            key={item.label}
+            onClick={() => {
+              setOpen(false);
+              item.onClick();
+            }}
+            type="button"
+          >
+            <span
+              className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-black ${
+                item.destructive ? "bg-red-50 text-red-600" : "bg-[#e4e6eb] text-[#050505]"
+              }`}
+            >
+              {item.icon}
+            </span>
+            <span className="min-w-0">
+              <span className={`block text-sm font-bold ${item.destructive ? "text-red-600" : ""}`}>
+                {item.label}
+              </span>
+              <span className="block text-[11px] leading-4 text-[#65676b]">{item.description}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 function Avatar({
@@ -2037,7 +5354,7 @@ function Avatar({
       <img
         alt=""
         className={`${sizeClass} shrink-0 rounded-xl bg-[#ece7dc] object-cover`}
-        src={src}
+        src={mediaSrc(src)}
       />
     );
   }

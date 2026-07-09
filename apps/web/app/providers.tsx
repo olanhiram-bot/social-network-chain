@@ -4,6 +4,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { sepolia } from "@reown/appkit/networks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { WagmiProvider } from "wagmi";
 
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
@@ -39,6 +40,17 @@ createAppKit({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    function suppressExternalFetchOverlay(event: PromiseRejectionEvent) {
+      if (event.reason instanceof TypeError && event.reason.message === "Failed to fetch") {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener("unhandledrejection", suppressExternalFetchOverlay);
+    return () => window.removeEventListener("unhandledrejection", suppressExternalFetchOverlay);
+  }, []);
+
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
