@@ -4,8 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter api exec prisma generate && pnpm --filter api build
-    preDeployCommand: pnpm --filter api exec prisma migrate deploy
-    startCommand: pnpm --filter api start:prod
+    startCommand: pnpm --filter api exec prisma migrate deploy && pnpm --filter api start:prod
     autoDeploy: true
     envVars:
       - key: NODE_VERSION
