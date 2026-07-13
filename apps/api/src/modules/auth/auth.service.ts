@@ -9,6 +9,12 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { generateNonce, SiweMessage } from 'siwe';
 import { PrismaService } from '../../prisma/prisma.service';
+
+const vercelSiweDomain = /^social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app$/;
+
+function isAllowedSiweDomain(domain: string) {
+  return domain === 'localhost:3001' || domain === process.env.SIWE_DOMAIN || vercelSiweDomain.test(domain);
+}
 import { WalletsService } from '../wallets/wallets.service';
 
 type AccessPayload = {
@@ -84,10 +90,13 @@ export class AuthService {
       if (!this.siweNonces.delete(siwe.nonce)) {
         throw new UnauthorizedException('Invalid SIWE nonce');
       }
+      if (!isAllowedSiweDomain(siwe.domain)) {
+        throw new UnauthorizedException('Invalid SIWE domain');
+      }
 
       const result = await siwe.verify({
         signature,
-        domain: process.env.SIWE_DOMAIN || 'localhost:3001',
+        domain: siwe.domain,
       });
 
       if (!result.success) {

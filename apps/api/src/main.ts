@@ -4,12 +4,20 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 
+const vercelOrigin = /^https:\/\/social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app$/;
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim()).filter(Boolean);
 
   app.enableCors({
-    origin: corsOrigin?.length ? corsOrigin : true,
+    origin: (origin, callback) => {
+      if (!origin || !corsOrigin?.length || corsOrigin.includes(origin) || vercelOrigin.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origin not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
