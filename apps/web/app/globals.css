@@ -230,6 +230,193 @@ textarea:focus-visible {
 .nexo-composer-video { color: var(--media-video); }
 .nexo-composer-live { color: var(--danger); }
 
+.nexo-composer-tag { color: var(--media-tag); }
+.nexo-composer-location { color: var(--media-location); }
+.nexo-composer-gif { color: var(--media-gif); }
+
+.nexo-composer.is-expanded {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  z-index: 50;
+  width: min(calc(100% - 2rem), 32rem);
+  max-height: calc(100dvh - 2.5rem);
+  overflow: auto;
+  padding: 0;
+  border-color: var(--rule);
+  background: var(--surface);
+  box-shadow: 0 18px 48px oklch(0.2 0.025 258 / 0.2), 0 0 0 100vmax oklch(0.2 0.025 258 / 0.35);
+  transform: translateX(-50%);
+}
+
+.nexo-composer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.nexo-composer-modal-header h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.nexo-composer-modal-header button {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.nexo-composer.is-expanded .nexo-composer-main {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  padding: var(--space-sm) var(--space-md) 0;
+}
+
+.nexo-composer-identity {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.nexo-composer-identity strong {
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+.nexo-composer-identity select {
+  max-width: 12rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: var(--surface-muted);
+  padding: 0.18rem 0.4rem;
+  color: var(--foreground);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.nexo-composer.is-expanded .nexo-composer-prompt {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 8rem;
+  margin-top: var(--space-sm);
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 1.2rem;
+}
+
+.nexo-composer.is-expanded .nexo-composer-fields {
+  margin: 0 var(--space-md);
+}
+
+.nexo-composer-add-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin: var(--space-sm) var(--space-md);
+  padding: 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+
+.nexo-composer-add-bar strong { font-size: 0.82rem; }
+
+.nexo-composer-add-bar > div { display: flex; align-items: center; gap: 0.35rem; }
+
+.nexo-composer-add-bar button {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+}
+
+.nexo-composer-add-bar svg { width: 1.4rem; height: 1.4rem; fill: currentColor; }
+
+.nexo-composer-more { color: var(--ink-muted); font-size: 1rem; font-weight: 800; }
+
+.nexo-composer-submit { margin: 0 var(--space-md) var(--space-md); }
+
+.nexo-composer-submit button {
+  width: 100%;
+  min-height: 2.35rem;
+  border-radius: var(--radius-control);
+  background: var(--foreground);
+  color: var(--color-accent-ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.nexo-composer-submit button:disabled {
+  background: var(--rule);
+  color: var(--ink-muted);
+}
+
+.nexo-composer-add-sheet {
+  position: absolute;
+  inset: 0;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+.nexo-composer-add-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.nexo-composer-add-sheet header h2 { font-size: 1.15rem; font-weight: 800; }
+
+.nexo-composer-add-sheet header button {
+  position: absolute;
+  left: 0.65rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  color: var(--ink-muted);
+  font-size: 1.5rem;
+}
+
+.nexo-composer-add-sheet > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: var(--space-sm);
+}
+
+.nexo-composer-add-sheet > div > button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 3.25rem;
+  padding: 0.45rem;
+  color: var(--foreground);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-align: left;
+}
+
+.nexo-composer-add-sheet svg { width: 1.6rem; height: 1.6rem; flex: 0 0 auto; fill: currentColor; }
+
 .nexo-nav-more {
   position: relative;
 }

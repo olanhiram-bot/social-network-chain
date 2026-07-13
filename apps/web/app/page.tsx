@@ -2499,6 +2499,8 @@ function Composer({
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const frameUploadBusyRef = useRef(false);
   const [expanded, setExpanded] = useState(false);
+  const [addOptionsOpen, setAddOptionsOpen] = useState(false);
+  const [postContent, setPostContent] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const myLive = lives.find((live) => live.hostId === user.id);
   const myLiveMessages = myLive ? liveMessages[myLive.id] ?? [] : [];
@@ -2664,6 +2666,11 @@ function Composer({
     }
   }
 
+  function closeComposer() {
+    setExpanded(false);
+    setAddOptionsOpen(false);
+  }
+
   return (
     <>
       <form
@@ -2671,28 +2678,47 @@ function Composer({
         onSubmit={(event) => {
           void onSubmit(event);
           clearMedia();
-          setExpanded(false);
+          setPostContent("");
+          closeComposer();
         }}
       >
+        {expanded && <header className="nexo-composer-modal-header">
+          <h2>Create post</h2>
+          <button aria-label="Close" type="button" onClick={closeComposer}>×</button>
+        </header>}
         <div className="nexo-composer-main">
           <Avatar name={user.name} src={user.avatar} size="md" />
+          {expanded && <div className="nexo-composer-identity">
+            <strong>{user.name}</strong>
+            <select aria-label="Audience" name="audience" defaultValue="PUBLIC">
+              <option value="PUBLIC">Public</option>
+              <option value="FRIENDS">Friends</option>
+              <option value="ONLY_ME">Only me</option>
+            </select>
+            {myPages.length > 0 && <select aria-label="Post as" name="pageId">
+              <option value="">Post as {user.name}</option>
+              {myPages.map((page) => <option key={page.id} value={page.id}>{page.name}</option>)}
+            </select>}
+          </div>}
           <textarea
             className="nexo-composer-prompt"
             name="content"
+            onChange={(event) => setPostContent(event.currentTarget.value)}
             onFocus={() => setExpanded(true)}
             placeholder={`What's on your mind, ${user.name}?`}
+            value={postContent}
           />
-          <div className="nexo-composer-actions">
-            <button aria-label="Add video" className="nexo-composer-action nexo-composer-video" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
+          {!expanded && <div className="nexo-composer-actions">
+            <button aria-label="Add video" className="nexo-composer-action nexo-composer-video" type="button" onClick={() => setExpanded(true)}>
               <ComposerIcon type="video" />
             </button>
-            <button aria-label="Add photo" className="nexo-composer-action nexo-composer-photo" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
+            <button aria-label="Add photo" className="nexo-composer-action nexo-composer-photo" type="button" onClick={() => setExpanded(true)}>
               <ComposerIcon type="photo" />
             </button>
             <button aria-label="Start live" className="nexo-composer-action nexo-composer-live" onClick={() => setLiveOpen(true)} type="button">
               <ComposerIcon type="feeling" />
             </button>
-          </div>
+          </div>}
         </div>
         {expanded && <div className="nexo-composer-fields">
             <input
@@ -2716,34 +2742,24 @@ function Composer({
                 </button>
               </div>
             )}
-            {myPages.length > 0 && (
-              <select
-                className="rounded-xl border border-[#ded7c9] bg-white px-3 py-2 text-sm font-semibold text-[#53645f] outline-none focus:border-[#49625b]"
-                name="pageId"
-              >
-                <option value="">Post as {user.name}</option>
-                {myPages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    Post as {page.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <select
-              className="rounded-xl border border-[#ded7c9] bg-white px-3 py-2 text-sm font-semibold text-[#53645f] outline-none focus:border-[#49625b]"
-              name="audience"
-              defaultValue="PUBLIC"
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="FRIENDS">Friends</option>
-              <option value="ONLY_ME">Only me</option>
-            </select>
         </div>}
-        {expanded && <div className="mt-3 flex justify-end border-t border-[#eee8dc] pt-3">
-          <button className={primaryButtonClass} disabled={loading} type="submit">
+        {expanded && <section className="nexo-composer-add-bar">
+          <strong>Add to your post</strong>
+          <div>
+            <button aria-label="Photo or video" className="nexo-composer-photo" type="button" onClick={() => mediaInputRef.current?.click()}><ComposerIcon type="photo" /></button>
+            <button aria-label="Tag people" className="nexo-composer-tag" type="button"><ComposerIcon type="tag" /></button>
+            <button aria-label="Feeling or activity" className="nexo-composer-live" type="button"><ComposerIcon type="feeling" /></button>
+            <button aria-label="Location" className="nexo-composer-location" type="button"><ComposerIcon type="location" /></button>
+            <button aria-label="GIF" className="nexo-composer-gif" type="button"><ComposerIcon type="gif" /></button>
+            <button aria-label="More post options" className="nexo-composer-more" type="button" onClick={() => setAddOptionsOpen(true)}>•••</button>
+          </div>
+        </section>}
+        {expanded && <div className="nexo-composer-submit">
+          <button disabled={loading || !postContent.trim()} type="submit">
             {loading ? "Publishing..." : "Post"}
           </button>
         </div>}
+        {expanded && addOptionsOpen && <ComposerAddOptions onBack={() => setAddOptionsOpen(false)} onLive={() => { closeComposer(); setLiveOpen(true); }} onPhoto={() => { setAddOptionsOpen(false); mediaInputRef.current?.click(); }} />}
       </form>
 
       {myLive && (
@@ -2872,7 +2888,7 @@ function Composer({
   );
 }
 
-function ComposerIcon({ type }: { type: "video" | "photo" | "feeling" }) {
+function ComposerIcon({ type }: { type: "video" | "photo" | "feeling" | "tag" | "location" | "gif" }) {
   if (type === "video") {
     return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5v-9Zm14 3.2 3.3-2.1A.45.45 0 0 1 21 9v6a.45.45 0 0 1-.7.4L17 13.3v-2.6Z" /></svg>;
   }
@@ -2881,7 +2897,35 @@ function ComposerIcon({ type }: { type: "video" | "photo" | "feeling" }) {
     return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.5 3h15A2.5 2.5 0 0 1 22 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5v-13A2.5 2.5 0 0 1 4.5 3ZM6 17h12l-3.7-4.5-2.6 3.1-1.8-2.1L6 17Zm2-8.2a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z" /></svg>;
   }
 
+  if (type === "tag") {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.2 11.4a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4ZM2.5 19a5.7 5.7 0 0 1 11.4 0v1.5H2.5V19Zm13.2-8.6a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Zm-.6 2.2a4.8 4.8 0 0 1 6.4 4.5v1.4h-5.3A7.7 7.7 0 0 0 15.1 12.6Z" /></svg>;
+  }
+
+  if (type === "location") {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2.8a7.2 7.2 0 0 0-7.2 7.2c0 5.3 7.2 11.2 7.2 11.2s7.2-5.9 7.2-11.2A7.2 7.2 0 0 0 12 2.8Zm0 10a2.8 2.8 0 1 1 0-5.6 2.8 2.8 0 0 1 0 5.6Z" /></svg>;
+  }
+
+  if (type === "gif") {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.5 4h15A2.5 2.5 0 0 1 22 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 17.5v-11A2.5 2.5 0 0 1 4.5 4Zm2.2 4v8H12v-2H9v-1h2v-1H6.7V8Zm6.8 0v8h2V8h-2Zm3.5 0v8h2v-3h2v-2h-2V10h2V8h-4Z" /></svg>;
+  }
+
   return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Zm-3 6.2a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Zm6 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Zm-7 4.5h8a4.2 4.2 0 0 1-8 0Z" /></svg>;
+}
+
+function ComposerAddOptions({ onBack, onLive, onPhoto }: { onBack: () => void; onLive: () => void; onPhoto: () => void }) {
+  const options: { label: string; type: "photo" | "tag" | "feeling" | "location" | "gif" | "video"; onClick?: () => void }[] = [
+    { label: "Photo/video", type: "photo", onClick: onPhoto },
+    { label: "Tag people", type: "tag" },
+    { label: "Feeling/activity", type: "feeling" },
+    { label: "Check in", type: "location" },
+    { label: "GIF", type: "gif" },
+    { label: "Live video", type: "video", onClick: onLive },
+  ];
+
+  return <section className="nexo-composer-add-sheet">
+    <header><button aria-label="Back" type="button" onClick={onBack}>←</button><h2>Add to your post</h2></header>
+    <div>{options.map((option) => <button key={option.label} type="button" onClick={option.onClick}><ComposerIcon type={option.type} /><span>{option.label}</span></button>)}</div>
+  </section>;
 }
 
 function FeedPost({
