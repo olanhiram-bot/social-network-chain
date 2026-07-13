@@ -1786,9 +1786,10 @@ export default function Page() {
             : view === "home"
               ? "lg:grid-cols-[260px_minmax(0,700px)_330px]"
               : view === "friends"
-                ? "nexo-friends-workbench !max-w-none !gap-0 !p-0 lg:grid-cols-[360px_minmax(0,1fr)]"
+                ? "nexo-friends-workbench !gap-0 !p-0 lg:grid-cols-[300px_minmax(0,1fr)]"
               : "lg:grid-cols-[260px_minmax(0,1fr)]"
         }`}
+        style={view === "friends" ? { maxWidth: "none" } : undefined}
       >
         {view !== "profile" && (
           <LeftRail user={session.user} view={view} onNavigate={setView} />
