@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-07-13",
+    "scope": "auth",
+    "macrostructure": "Split Studio",
+    "theme": "Cobalt",
+    "enrichment": "css network orbit",
+    "brief": "Give Nexo a premium social-web3 entry surface while preserving wallet and email access"
+  },
+  {
+    "date": "2026-07-13",
     "scope": "app",
     "macrostructure": "Workbench",
     "theme": "Cobalt",
