@@ -787,7 +787,19 @@ export default function Page() {
           chainId: walletChainId,
           nonce,
         });
-        const signature = await signMessageAsync({ message });
+        const signature = await new Promise<string>((resolve, reject) => {
+          const timeout = window.setTimeout(() => reject(new Error("Wallet signature timed out. Reconnect your wallet and try again.")), 30_000);
+          void signMessageAsync({ message }).then(
+            (value) => {
+              window.clearTimeout(timeout);
+              resolve(value);
+            },
+            (reason) => {
+              window.clearTimeout(timeout);
+              reject(reason);
+            },
+          );
+        });
         const nextSession = await request<Session>("/auth/siwe/verify", {
           method: "POST",
           body: JSON.stringify({ message, signature }),
