@@ -1,5 +1,5 @@
 {
-  "installCommand": "corepack enable && corepack prepare pnpm@10.15.1 --activate && pnpm install --filter web... --frozen-lockfile",
-  "buildCommand": "corepack prepare pnpm@10.15.1 --activate && pnpm --filter web build",
+  "installCommand": "corepack pnpm@10.15.1 install --filter web... --frozen-lockfile",
+  "buildCommand": "corepack pnpm@10.15.1 --filter web build",
   "outputDirectory": ".next"
 }
