@@ -1785,6 +1785,8 @@ export default function Page() {
             ? "lg:grid-cols-1"
             : view === "home"
               ? "lg:grid-cols-[260px_minmax(0,700px)_330px]"
+              : view === "friends"
+                ? "nexo-friends-workbench lg:grid-cols-[360px_minmax(0,1fr)]"
               : "lg:grid-cols-[260px_minmax(0,1fr)]"
         }`}
       >
@@ -2244,6 +2246,23 @@ function LeftRail({
     { label: "Lives", view: "lives" },
     { label: "Profile", view: "profile" },
   ];
+
+  if (view === "friends") {
+    return (
+      <aside className="nexo-left-rail nexo-friends-sidebar sticky top-[4.25rem] hidden h-[calc(100dvh-4.25rem)] overflow-y-auto border-r border-[#ded7c9] bg-white px-2 py-4 lg:block">
+        <div className="mb-3 flex items-center justify-between px-3">
+          <h1 className="text-2xl font-black tracking-tight text-[#17211f]">Friends</h1>
+          <span aria-label="Friend settings" className="grid size-9 place-items-center rounded-full bg-[#ece7dc] text-lg">⚙</span>
+        </div>
+        <nav className="space-y-1" aria-label="Friends navigation">
+          <a className="nexo-friends-nav-item is-active" href="#friend-suggestions">People you may know</a>
+          <a className="nexo-friends-nav-item" href="#friend-requests">Friend requests</a>
+          <a className="nexo-friends-nav-item" href="#my-friends">All friends</a>
+          <button className="nexo-friends-nav-item" type="button" onClick={() => onNavigate("home")}>Home</button>
+        </nav>
+      </aside>
+    );
+  }
 
   return (
     <aside className="nexo-left-rail sticky top-24 hidden h-[calc(100dvh-7rem)] space-y-2 overflow-y-auto lg:block">
@@ -3237,74 +3256,72 @@ function FriendsPage({
   onReject: (id: string) => void;
 }) {
   return (
-    <section className="space-y-4">
-      <PageHeader
-        kicker="Red"
-        title="Friends"
-        subtitle="Manage requests, suggestions, and contacts in one place."
-      />
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Requests</h2>
-          <div className="mt-4 grid gap-3">
-            {requests.length === 0 ? (
-              <EmptyText>No pending requests.</EmptyText>
-            ) : (
-              requests.map((request) => (
-                <div className="rounded-xl bg-[#f7f5ef] p-3" key={request.id}>
-                  <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button className={primaryButtonClass} onClick={() => onAccept(request.id)}>
-                      Confirm
-                    </button>
-                    <button className={secondaryButtonClass} onClick={() => onReject(request.id)}>
-                      Rechazar
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+    <section className="nexo-friends-page space-y-9">
+      <section id="friend-suggestions">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-black tracking-tight text-[#17211f]">People you may know</h2>
+          <button className="text-sm font-bold text-[#1877f2] hover:underline" type="button">See all</button>
+        </div>
+        {suggestions.length === 0 ? <EmptyText>No suggestions yet.</EmptyText> : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+            {suggestions.map((user) => <FriendSuggestionCard key={user.id} user={user} onAdd={onAdd} onOpenProfile={onOpenProfile} />)}
           </div>
-        </section>
+        )}
+      </section>
 
-        <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Sugerencias</h2>
-          <div className="mt-4 grid gap-3">
-            {suggestions.length === 0 ? (
-              <EmptyText>No suggestions yet.</EmptyText>
-            ) : (
-              suggestions.map((user) => (
-                <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] p-3" key={user.id}>
-                  <PersonRow user={user} onOpenProfile={onOpenProfile} />
-                  <button className={secondaryButtonClass} onClick={() => onAdd(user.id)}>
-                    Add
-                  </button>
+      <section id="friend-requests">
+        <h2 className="mb-4 text-xl font-black tracking-tight text-[#17211f]">Friend requests</h2>
+        {requests.length === 0 ? <EmptyText>No pending requests.</EmptyText> : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {requests.map((request) => (
+              <div className="rounded-xl border border-[#ded7c9] bg-white p-3 shadow-sm" key={request.id}>
+                <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button className={primaryButtonClass} type="button" onClick={() => onAccept(request.id)}>Confirm</button>
+                  <button className={secondaryButtonClass} type="button" onClick={() => onReject(request.id)}>Delete</button>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-        </section>
+        )}
+      </section>
 
-        <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Contacts</h2>
-          <div className="mt-4 grid gap-3">
-            {friends.length === 0 ? (
-              <EmptyText>You have not added any friends yet.</EmptyText>
-            ) : (
-              friends.map((friend) => (
-                <div className="rounded-xl bg-[#f7f5ef] p-3" key={friend.id}>
-                  <PersonRow user={friend} onOpenProfile={onOpenProfile} />
-                  <button className={`${secondaryButtonClass} mt-3 w-full`} type="button" onClick={() => onMessage(friend.id)}>
-                    Message
-                  </button>
-                </div>
-              ))
-            )}
+      <section id="my-friends">
+        <h2 className="mb-4 text-xl font-black tracking-tight text-[#17211f]">All friends</h2>
+        {friends.length === 0 ? <EmptyText>You have not added any friends yet.</EmptyText> : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {friends.map((friend) => (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[#ded7c9] bg-white p-3 shadow-sm" key={friend.id}>
+                <PersonRow user={friend} onOpenProfile={onOpenProfile} />
+                <button className={secondaryButtonClass} type="button" onClick={() => onMessage(friend.id)}>Message</button>
+              </div>
+            ))}
           </div>
-        </section>
-      </div>
+        )}
+      </section>
     </section>
+  );
+}
+
+function FriendSuggestionCard({ onAdd, onOpenProfile, user }: { onAdd: (userId: string) => void; onOpenProfile: (userId: string) => void; user: User }) {
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-sm">
+      <button aria-label={`Open ${user.name}'s profile`} className="block aspect-square w-full overflow-hidden bg-[#eceff3]" type="button" onClick={() => onOpenProfile(user.id)}>
+        {user.avatar ? <img alt="" className="size-full object-cover" src={mediaSrc(user.avatar)} /> : <span className="grid size-full place-items-center"><Avatar name={user.name} size="lg" /></span>}
+      </button>
+      <div className="p-3">
+        <button className="block w-full truncate text-left text-base font-black text-[#17211f] hover:underline" type="button" onClick={() => onOpenProfile(user.id)}>{user.name}</button>
+        <p className="mt-1 truncate text-sm text-[#65736f]">Suggested for you</p>
+        <div className="mt-3 grid gap-2">
+          <button className="rounded-lg bg-[#e7f3ff] px-3 py-2 text-sm font-bold text-[#1877f2] hover:bg-[#d8ebff]" type="button" onClick={() => onAdd(user.id)}>Add friend</button>
+          <button className="rounded-lg bg-[#e4e6eb] px-3 py-2 text-sm font-bold text-[#17211f] hover:bg-[#d8dade]" type="button" onClick={() => setDismissed(true)}>Remove</button>
+        </div>
+      </div>
+    </article>
   );
 }
 

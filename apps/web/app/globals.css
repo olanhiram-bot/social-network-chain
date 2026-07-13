@@ -80,6 +80,37 @@ textarea:focus-visible {
   padding-block: var(--space-lg) var(--space-xl);
 }
 
+.nexo-workbench.nexo-friends-workbench {
+  max-width: none;
+  gap: 0;
+  padding: 0;
+}
+
+.nexo-friends-page {
+  min-width: 0;
+  padding: var(--space-lg);
+}
+
+.nexo-friends-nav-item {
+  display: block;
+  width: 100%;
+  border-radius: 0.6rem;
+  padding: 0.8rem 1rem;
+  color: var(--foreground);
+  font-size: 0.94rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.nexo-friends-nav-item:hover,
+.nexo-friends-nav-item.is-active {
+  background: var(--surface-muted);
+}
+
+.nexo-friends-nav-item.is-active {
+  color: var(--accent-strong);
+}
+
 .nexo-left-rail {
   padding: var(--space-2xs);
   border: 0;
