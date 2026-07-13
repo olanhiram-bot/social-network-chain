@@ -61,6 +61,16 @@ textarea:focus-visible {
   box-shadow: 0 30px 80px oklch(0 0 0 / 0.28);
 }
 
+.nexo-auth appkit-button[data-expanded="true"] {
+  display: block;
+  width: 100%;
+}
+
+.nexo-auth appkit-button[data-expanded="true"]::part(button) {
+  justify-content: center;
+  width: 100%;
+}
+
 .nexo-topbar {
   height: 4.25rem;
   width: 100%;

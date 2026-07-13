@@ -5373,7 +5373,12 @@ function AuthForm({
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
-        {createElement("appkit-button")}
+        {createElement("appkit-button", {
+          "data-expanded": "true",
+          label: "Connect wallet",
+          size: "md",
+          style: { display: "block", width: "100%" },
+        })}
       </div>
       {walletLoading && (
         <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
