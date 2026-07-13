@@ -2746,7 +2746,7 @@ function Composer({
                   </p>
                   <h2 className="mt-3 text-xl font-black">{myLive.title}</h2>
                   <p className="mt-1 text-xs text-white/60">
-                    Inicio {new Date(myLive.startedAt).toLocaleTimeString()}
+                    Started {new Date(myLive.startedAt).toLocaleTimeString()}
                   </p>
                 </div>
                 <button className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#111816]" type="button" onClick={() => void finishLive(myLive.id)}>
@@ -2821,7 +2821,7 @@ function Composer({
                     <p className="text-xs font-black uppercase text-red-700">Transmitiendo</p>
                     <h3 className="mt-1 text-base font-black">{myLive.title}</h3>
                     <p className="mt-1 text-xs text-[#6d746f]">
-                      Inicio {new Date(myLive.startedAt).toLocaleTimeString()}
+                      Started {new Date(myLive.startedAt).toLocaleTimeString()}
                     </p>
                   </div>
                 ) : (
@@ -2887,7 +2887,7 @@ function FeedPost({
 }) {
   const canManage = post.author.id === viewerId;
   const [commentOpen, setCommentOpen] = useState(false);
-  const commentLabel = post.commentCount === 1 ? "comments?" : "comments?s";
+  const commentLabel = post.commentCount === 1 ? "comment" : "comments";
   const actor = post.page ?? post.author;
 
   return (
@@ -3009,7 +3009,7 @@ function FeedPost({
                   {
                     destructive: true,
                     icon: "D",
-                    label: "Delete comments?",
+                    label: "Delete comment",
                     description: "Remove this comment.",
                     onClick: () => onCommentDelete(comment.id),
                   },
@@ -3024,7 +3024,7 @@ function FeedPost({
               autoFocus
               className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
               name="comment"
-              placeholder="Escribe un comments?..."
+              placeholder="Write a comment..."
             />
             <button className={secondaryButtonClass} type="submit">
               Send
@@ -3059,7 +3059,7 @@ function PostMedia({
         <div className="flex items-center justify-between px-4 py-3 text-white">
           <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">Live</span>
           <a className="text-sm font-bold text-[#f2c166]" href={mediaSrc(url)} rel="noreferrer" target="_blank">
-            Abrir stream
+            Open stream
           </a>
         </div>
         <div className="grid min-h-48 place-items-center px-6 pb-6 text-center text-sm text-white/80">
@@ -3116,7 +3116,7 @@ function RightRail({
               <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
               <div className="grid grid-cols-2 gap-2">
                 <button className={primaryButtonClass} onClick={() => onAccept(request.id)}>
-                  Confirmar
+                  Confirm
                 </button>
                 <button className={secondaryButtonClass} onClick={() => onReject(request.id)}>
                   Delete
@@ -3135,14 +3135,14 @@ function RightRail({
             <div className="flex items-center justify-between gap-3" key={user.id}>
               <PersonRow user={user} onOpenProfile={onOpenProfile} />
               <button className={secondaryButtonClass} onClick={() => onAdd(user.id)}>
-                Agregar
+                Add
               </button>
             </div>
           ))
         )}
       </Panel>
 
-      <Panel title="Contactos">
+      <Panel title="Contacts">
         {friends.length === 0 ? (
           <EmptyText>You have not added any friends yet.</EmptyText>
         ) : (
@@ -3192,7 +3192,7 @@ function FriendsPage({
                   <PersonRow user={request.requester} onOpenProfile={onOpenProfile} />
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button className={primaryButtonClass} onClick={() => onAccept(request.id)}>
-                      Confirmar
+                      Confirm
                     </button>
                     <button className={secondaryButtonClass} onClick={() => onReject(request.id)}>
                       Rechazar
@@ -3214,7 +3214,7 @@ function FriendsPage({
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] p-3" key={user.id}>
                   <PersonRow user={user} onOpenProfile={onOpenProfile} />
                   <button className={secondaryButtonClass} onClick={() => onAdd(user.id)}>
-                    Agregar
+                    Add
                   </button>
                 </div>
               ))
@@ -3223,7 +3223,7 @@ function FriendsPage({
         </section>
 
         <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Contactos</h2>
+          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Contacts</h2>
           <div className="mt-4 grid gap-3">
             {friends.length === 0 ? (
               <EmptyText>You have not added any friends yet.</EmptyText>
@@ -5216,7 +5216,7 @@ function SharePostModal({
           <p className="mt-1 line-clamp-3 text-sm text-[#53645f]">{post.content || "Post with media"}</p>
         </div>
         <form className="mt-4 space-y-3" onSubmit={onShare}>
-          <textarea className={`${inputClass} min-h-24 resize-none`} name="content" placeholder="Agrega un comments?..." />
+          <textarea className={`${inputClass} min-h-24 resize-none`} name="content" placeholder="Add a comment..." />
           <select className={inputClass} name="pageId">
             <option value="">Share to my profile</option>
             {myPages.map((page) => (
