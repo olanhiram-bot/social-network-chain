@@ -466,7 +466,7 @@ export default function Page() {
       }
 
       throw new Error(
-        `No se pudo conectar al API en ${primaryUrl}. Revisa que el backend este levantado en el puerto 3000.`,
+        `Could not connect to the API at ${primaryUrl}. Check that the backend is running.`,
       );
     }
   }
@@ -1504,41 +1504,41 @@ export default function Page() {
   }
 
   function editPost(post: Post) {
-    setEditTarget({ kind: "post", id: post.id, title: "Editar publicacion", value: post.content });
+    setEditTarget({ kind: "post", id: post.id, title: "Edit post", value: post.content });
   }
 
   function deletePost(postId: string) {
     setDeleteTarget({
       kind: "post",
       id: postId,
-      title: "Eliminar publicacion",
-      description: "Esta publicacion se quitara de tu perfil y del inicio.",
+      title: "Delete post",
+      description: "This post will be removed from your profile and feed.",
     });
   }
 
   function editComment(comment: Post["comments"][number]) {
-    setEditTarget({ kind: "comment", id: comment.id, title: "Editar comentario", value: comment.content });
+    setEditTarget({ kind: "comment", id: comment.id, title: "Edit comment", value: comment.content });
   }
 
   function deleteComment(commentId: string) {
     setDeleteTarget({
       kind: "comment",
       id: commentId,
-      title: "Eliminar comentario",
-      description: "Este comentario se quitara de la publicacion.",
+      title: "Delete comment",
+      description: "This comment will be removed from the post.",
     });
   }
 
   function editLive(live: LiveSession) {
-    setEditTarget({ kind: "live", id: live.id, title: "Editar live", value: live.title });
+    setEditTarget({ kind: "live", id: live.id, title: "Edit live", value: live.title });
   }
 
   function deleteLive(liveId: string) {
     setDeleteTarget({
       kind: "live",
       id: liveId,
-      title: "Eliminar live",
-      description: "Este live se borrara de tu perfil.",
+      title: "Delete live",
+      description: "This live will be removed from your profile.",
     });
   }
 
@@ -1589,7 +1589,7 @@ export default function Page() {
       await authed(`/messages/conversations/${id}`, {
         method: "POST",
         body: JSON.stringify({
-          content: `${String(form.get("content")).trim() || "Te comparto esta publicacion"}\n\n${shareTarget.content}`,
+          content: `${String(form.get("content")).trim() || "Sharing this post with you"}\n\n${shareTarget.content}`,
         }),
       });
       setShareTarget(null);
@@ -1727,13 +1727,13 @@ export default function Page() {
           <section>
             <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#d8d1c3] bg-white/70 px-4 py-2 text-sm font-semibold text-[#49625b]">
               <span className="size-2 rounded-full bg-[#d89d35]" />
-              Red social con identidad onchain
+              Onchain social network
             </div>
             <h1 className="max-w-2xl text-5xl font-black tracking-tight text-[#17211f] md:text-7xl">
               Nexo
             </h1>
             <p className="mt-5 max-w-xl text-xl leading-8 text-[#53645f]">
-              Un espacio limpio para publicar, conectar y llevar tu identidad social a Sepolia.
+              A clean space to post, connect, and bring your social identity to Sepolia.
             </p>
           </section>
 
@@ -1965,7 +1965,7 @@ export default function Page() {
             {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             {posts.length === 0 ? (
               <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
-                Todavia no hay publicaciones. Crea la primera.
+                There are no posts yet. Create the first one.
               </p>
             ) : (
               posts.map((post) => (
@@ -2063,14 +2063,14 @@ function TopBar({
 }) {
   const navItems: { label: string; view: AppView }[] = [
     { label: "Inicio", view: "home" },
-    { label: "Amigos", view: "friends" },
-    { label: "Mensajes", view: "messages" },
-    { label: "Paginas", view: "pages" },
-    { label: "Grupos", view: "groups" },
+    { label: "Friends", view: "friends" },
+    { label: "Messages", view: "messages" },
+    { label: "Pages", view: "pages" },
+    { label: "Groups", view: "groups" },
     { label: "Marketplace", view: "marketplace" },
-    { label: "Eventos", view: "events" },
+    { label: "Events", view: "events" },
     { label: "Lives", view: "lives" },
-    { label: "Perfil", view: "profile" },
+    { label: "Profile", view: "profile" },
   ];
 
   return (
@@ -2090,7 +2090,7 @@ function TopBar({
           <input
             className="h-10 w-64 rounded-xl border border-[#ded7c9] bg-white px-4 text-sm outline-none focus:border-[#49625b]"
             name="query"
-            placeholder="Buscar en Nexo"
+            placeholder="Search Nexo"
           />
         </form>
         <nav className="mx-auto hidden h-full items-center gap-2 md:flex">
@@ -2124,11 +2124,11 @@ function TopBar({
           </summary>
           <div className="absolute right-0 top-12 z-30 w-80 overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-2xl">
             <div className="border-b border-[#eee8dc] p-3">
-              <h2 className="text-sm font-black">Notificaciones</h2>
+              <h2 className="text-sm font-black">Notifications</h2>
             </div>
             <div className="max-h-96 overflow-y-auto">
               {notifications.notifications.length === 0 ? (
-                <p className="p-4 text-sm text-[#6d746f]">No tienes notificaciones.</p>
+                <p className="p-4 text-sm text-[#6d746f]">You have no notifications.</p>
               ) : (
                 notifications.notifications.map((notification) => (
                   <button
@@ -2175,14 +2175,14 @@ function LeftRail({
 }) {
   const items: { label: string; view: AppView }[] = [
     { label: "Inicio", view: "home" },
-    { label: "Amigos", view: "friends" },
-    { label: "Mensajes", view: "messages" },
-    { label: "Paginas", view: "pages" },
-    { label: "Grupos", view: "groups" },
+    { label: "Friends", view: "friends" },
+    { label: "Messages", view: "messages" },
+    { label: "Pages", view: "pages" },
+    { label: "Groups", view: "groups" },
     { label: "Marketplace", view: "marketplace" },
-    { label: "Eventos", view: "events" },
+    { label: "Events", view: "events" },
     { label: "Lives", view: "lives" },
-    { label: "Perfil", view: "profile" },
+    { label: "Profile", view: "profile" },
   ];
 
   return (
@@ -2271,9 +2271,9 @@ function Stories({
           >
             <aside className="border-b border-[#ded7c9] p-5 md:border-b-0 md:border-r">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">Crear historia</h2>
+                <h2 className="text-xl font-black">Create story</h2>
                 <button className={secondaryButtonClass} type="button" onClick={closeCreate}>
-                  Cerrar
+                  Close
                 </button>
               </div>
               <div className="mt-5 grid gap-3">
@@ -2288,11 +2288,11 @@ function Stories({
                 <input
                   className={inputClass}
                   name="caption"
-                  placeholder={`Texto para tu historia, ${user.name}`}
+                  placeholder={`Text for your story, ${user.name}`}
                 />
               </div>
               <button className={`${primaryButtonClass} mt-5 w-full`} disabled={!draftPreview || loading} type="submit">
-                {loading ? "Publicando..." : "Compartir en historia"}
+                {loading ? "Publishing..." : "Share to story"}
               </button>
             </aside>
 
@@ -2306,7 +2306,7 @@ function Stories({
                   )
                 ) : (
                   <div className="grid size-full place-items-center px-8 text-center text-sm font-bold text-white/60">
-                    Selecciona una foto o video para previsualizar.
+                    Select a photo or video to preview.
                   </div>
                 )}
               </div>
@@ -2327,8 +2327,8 @@ function Stories({
             </span>
           </div>
           <div className="p-3">
-            <p className="text-sm font-black">Crear historia</p>
-            <p className="mt-1 text-xs text-[#6d746f]">Foto o video</p>
+            <p className="text-sm font-black">Create story</p>
+            <p className="mt-1 text-xs text-[#6d746f]">Photo or video</p>
           </div>
         </button>
 
@@ -2372,7 +2372,7 @@ function Stories({
             onClick={() => setPreviewStory(null)}
             type="button"
           >
-            Cerrar
+            Close
           </button>
           <div className="relative h-[86vh] w-full max-w-[430px] overflow-hidden rounded-2xl bg-black shadow-2xl">
             {activePreviewStory.mediaType === "VIDEO" ? (
@@ -2460,7 +2460,7 @@ function Composer({
         liveVideoRef.current.srcObject = stream;
       }
     } catch {
-      setCameraError("No se pudo acceder a camara o microfono.");
+      setCameraError("Could not access camera or microphone.");
     }
   }
 
@@ -2515,7 +2515,7 @@ function Composer({
     try {
       const recordingUrl = await stopRecordingAndUpload();
       if (!recordingUrl) {
-        setCameraError("La grabacion no se pudo guardar. El live sigue activo para que puedas intentarlo de nuevo.");
+        setCameraError("The recording could not be saved. The live is still active so you can try again.");
         return;
       }
 
@@ -2588,7 +2588,7 @@ function Composer({
           const uploaded = await onUploadMedia(file);
           resolve(uploaded.url);
         } catch {
-          setCameraError("No se pudo guardar la grabacion del live.");
+          setCameraError("Could not save the live recording.");
           resolve(undefined);
         }
       };
@@ -2618,7 +2618,7 @@ function Composer({
             <textarea
               className="min-h-24 resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
               name="content"
-              placeholder={`Que estas pensando, ${user.name}?`}
+              placeholder={`What's on your mind, ${user.name}?`}
             />
             <input
               ref={mediaInputRef}
@@ -2633,7 +2633,7 @@ function Composer({
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[#17211f]">{selectedMedia.name}</p>
                   <p className="text-xs text-[#6d746f]">
-                    {selectedMedia.type.startsWith("video/") ? "Video" : "Foto"} seleccionada
+                    Selected {selectedMedia.type.startsWith("video/") ? "video" : "photo"}
                   </p>
                 </div>
                 <button className="rounded-lg bg-[#ece7dc] px-3 py-1.5 text-xs font-bold hover:bg-[#ded7c9]" type="button" onClick={clearMedia}>
@@ -2646,10 +2646,10 @@ function Composer({
                 className="rounded-xl border border-[#ded7c9] bg-white px-3 py-2 text-sm font-semibold text-[#53645f] outline-none focus:border-[#49625b]"
                 name="pageId"
               >
-                <option value="">Publicar como {user.name}</option>
+                <option value="">Post as {user.name}</option>
                 {myPages.map((page) => (
                   <option key={page.id} value={page.id}>
-                    Publicar como {page.name}
+                    Post as {page.name}
                   </option>
                 ))}
               </select>
@@ -2659,9 +2659,9 @@ function Composer({
               name="audience"
               defaultValue="PUBLIC"
             >
-              <option value="PUBLIC">Publico</option>
-              <option value="FRIENDS">Amigos</option>
-              <option value="ONLY_ME">Solo yo</option>
+              <option value="PUBLIC">Public</option>
+              <option value="FRIENDS">Friends</option>
+              <option value="ONLY_ME">Only me</option>
             </select>
           </div>
         </div>
@@ -2672,7 +2672,7 @@ function Composer({
               type="button"
               onClick={() => mediaInputRef.current?.click()}
             >
-              Foto
+              Photo
             </button>
             <button
               className="rounded-xl bg-[#f4efe5] px-3 py-2 hover:bg-[#ece7dc]"
@@ -2690,7 +2690,7 @@ function Composer({
             </button>
           </div>
           <button className={primaryButtonClass} disabled={loading} type="submit">
-            {loading ? "Publicando..." : "Publicar"}
+            {loading ? "Publishing..." : "Post"}
           </button>
         </div>
       </form>
@@ -2703,7 +2703,7 @@ function Composer({
                 <div>
                   <p className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
                     <span className="size-2 rounded-full bg-white" />
-                    En vivo
+                    Live
                   </p>
                   <h2 className="mt-3 text-xl font-black">{myLive.title}</h2>
                   <p className="mt-1 text-xs text-white/60">
@@ -2715,7 +2715,7 @@ function Composer({
                 </button>
               </div>
               <div className="mt-4 grid aspect-video place-items-center rounded-2xl border border-white/10 bg-black text-sm font-bold text-white/50">
-                Panel de transmision activo
+                Live broadcast panel
               </div>
             </div>
             <LiveChatPanel
@@ -2746,11 +2746,11 @@ function Composer({
                   />
                 ) : (
                   <div className="grid aspect-video place-items-center px-8 text-center text-sm font-bold text-white/60">
-                    Enciende la camara para previsualizar tu live.
+                    Turn on the camera to preview your live.
                   </div>
                 )}
                 <div className="absolute left-4 top-4 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase text-white">
-                  {myLive ? "En vivo" : "Live preview"}
+                  {myLive ? "Live" : "Live preview"}
                 </div>
               </div>
             </div>
@@ -2758,7 +2758,7 @@ function Composer({
             <form className="grid content-between gap-4 p-5" onSubmit={submitLive}>
               <div>
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-black">{myLive ? "Panel de live" : "Crear live"}</h2>
+                  <h2 className="text-xl font-black">{myLive ? "Live panel" : "Create live"}</h2>
                   <button
                     className={secondaryButtonClass}
                     type="button"
@@ -2769,13 +2769,13 @@ function Composer({
                       setLiveOpen(false);
                     }}
                   >
-                    Cerrar
+                    Close
                   </button>
                 </div>
                 <p className="mt-2 text-sm text-[#6d746f]">
                   {myLive
-                    ? "Administra tu transmision y conversa con el chat en tiempo real."
-                    : "Transmite desde tu camara. La sesion queda registrada como live activo en la app."}
+                    ? "Manage your broadcast and chat in real time."
+                    : "Broadcast from your camera. The session is registered as an active live in the app."}
                 </p>
                 {myLive ? (
                   <div className="mt-5 rounded-2xl bg-red-50 p-4">
@@ -2786,14 +2786,14 @@ function Composer({
                     </p>
                   </div>
                 ) : (
-                  <input className={`${inputClass} mt-5`} name="title" placeholder="Titulo del live" required />
+                  <input className={`${inputClass} mt-5`} name="title" placeholder="Title del live" required />
                 )}
                 {cameraError && <p className="mt-3 text-sm font-semibold text-red-700">{cameraError}</p>}
               </div>
 
               <div className="grid gap-2">
                 <button className={secondaryButtonClass} type="button" onClick={cameraReady ? stopCamera : enableCamera}>
-                  {cameraReady ? "Apagar camara" : "Encender camara"}
+                  {cameraReady ? "Turn off camera" : "Turn on camera"}
                 </button>
                 {myLive ? (
                   <button className={primaryButtonClass} type="button" onClick={() => void finishLive(myLive.id)}>
@@ -2801,7 +2801,7 @@ function Composer({
                   </button>
                 ) : (
                   <button className={primaryButtonClass} disabled={!cameraReady || loading} type="submit">
-                    {loading ? "Iniciando..." : "Iniciar transmision"}
+                    {loading ? "Starting..." : "Start broadcast"}
                   </button>
                 )}
               </div>
@@ -2848,7 +2848,7 @@ function FeedPost({
 }) {
   const canManage = post.author.id === viewerId;
   const [commentOpen, setCommentOpen] = useState(false);
-  const commentLabel = post.commentCount === 1 ? "comentario" : "comentarios";
+  const commentLabel = post.commentCount === 1 ? "comments?" : "comments?s";
   const actor = post.page ?? post.author;
 
   return (
@@ -2860,7 +2860,7 @@ function FeedPost({
           <div>
             <h2 className="text-sm font-semibold">{actor.name}</h2>
             <p className="text-xs text-[#6d746f]">
-              {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+              {post.page ? `${post.page.category || "Page"} · ` : ""}
               {new Date(post.createdAt).toLocaleString()}
             </p>
           </div>
@@ -2870,30 +2870,30 @@ function FeedPost({
           items={canManage ? [
             {
               icon: "E",
-              label: "Editar publicacion",
-              description: "Cambiar el texto de esta publicacion.",
+              label: "Edit post",
+              description: "Change this post text.",
               onClick: () => onEdit(post),
             },
             {
               destructive: true,
               icon: "D",
-              label: "Eliminar publicacion",
-              description: "Quitarla de tu perfil y del inicio.",
+              label: "Delete post",
+              description: "Remove it from your profile and feed.",
               onClick: () => onDelete(post.id),
             },
           ] : [
             {
               destructive: true,
               icon: "R",
-              label: "Reportar publicacion",
-              description: "Enviar esta publicacion a moderacion.",
+              label: "Report post",
+              description: "Send this post to moderation.",
               onClick: () => onReport(post),
             },
           ]}
         />
       </div>
       <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[#6d746f]">
-        {post.audience === "FRIENDS" ? "Amigos" : post.audience === "ONLY_ME" ? "Solo yo" : "Publico"}
+        {post.audience === "FRIENDS" ? "Friends" : post.audience === "ONLY_ME" ? "Only me" : "Public"}
       </p>
       <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>
       {post.mediaUrl && <PostMedia type={post.mediaType} url={post.mediaUrl} />}
@@ -2938,10 +2938,10 @@ function FeedPost({
           type="button"
           onClick={() => setCommentOpen((open) => !open)}
         >
-          Comentar
+          Comment
         </button>
         <button className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]" type="button" onClick={() => onShare(post)}>
-          Compartir
+          Share
         </button>
       </div>
       <div className="mt-3 space-y-3">
@@ -2963,15 +2963,15 @@ function FeedPost({
                 items={[
                   {
                     icon: "E",
-                    label: "Editar comentario",
-                    description: "Cambiar el texto de este comentario.",
+                    label: "Edit comment",
+                    description: "Change this comment text.",
                     onClick: () => onCommentEdit(comment),
                   },
                   {
                     destructive: true,
                     icon: "D",
-                    label: "Eliminar comentario",
-                    description: "Quitar este comentario.",
+                    label: "Delete comments?",
+                    description: "Remove this comment.",
                     onClick: () => onCommentDelete(comment.id),
                   },
                 ]}
@@ -2985,10 +2985,10 @@ function FeedPost({
               autoFocus
               className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
               name="comment"
-              placeholder="Escribe un comentario..."
+              placeholder="Escribe un comments?..."
             />
             <button className={secondaryButtonClass} type="submit">
-              Enviar
+              Send
             </button>
           </form>
         )}
@@ -3024,7 +3024,7 @@ function PostMedia({
           </a>
         </div>
         <div className="grid min-h-48 place-items-center px-6 pb-6 text-center text-sm text-white/80">
-          Stream externo conectado a esta publicacion.
+          External stream connected to this post.
         </div>
       </div>
     );
@@ -3068,9 +3068,9 @@ function RightRail({
         )}
       </Panel>
 
-      <Panel title="Solicitudes de amistad">
+      <Panel title="Friend requests">
         {requests.length === 0 ? (
-          <EmptyText>No hay solicitudes pendientes.</EmptyText>
+          <EmptyText>No pending requests.</EmptyText>
         ) : (
           requests.map((request) => (
             <div className="space-y-2" key={request.id}>
@@ -3080,7 +3080,7 @@ function RightRail({
                   Confirmar
                 </button>
                 <button className={secondaryButtonClass} onClick={() => onReject(request.id)}>
-                  Eliminar
+                  Delete
                 </button>
               </div>
             </div>
@@ -3088,9 +3088,9 @@ function RightRail({
         )}
       </Panel>
 
-      <Panel title="Personas que quizas conozcas">
+      <Panel title="People you may know">
         {suggestions.length === 0 ? (
-          <EmptyText>No hay sugerencias por ahora.</EmptyText>
+          <EmptyText>No suggestions yet.</EmptyText>
         ) : (
           suggestions.map((user) => (
             <div className="flex items-center justify-between gap-3" key={user.id}>
@@ -3105,7 +3105,7 @@ function RightRail({
 
       <Panel title="Contactos">
         {friends.length === 0 ? (
-          <EmptyText>Aun no tienes amigos agregados.</EmptyText>
+          <EmptyText>You have not added any friends yet.</EmptyText>
         ) : (
           friends.map((friend) => <PersonRow key={friend.id} user={friend} onOpenProfile={onOpenProfile} />)
         )}
@@ -3137,16 +3137,16 @@ function FriendsPage({
     <section className="space-y-4">
       <PageHeader
         kicker="Red"
-        title="Amigos"
-        subtitle="Administra solicitudes, sugerencias y contactos desde una vista completa."
+        title="Friends"
+        subtitle="Manage requests, suggestions, and contacts in one place."
       />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Solicitudes</h2>
+          <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Requests</h2>
           <div className="mt-4 grid gap-3">
             {requests.length === 0 ? (
-              <EmptyText>No hay solicitudes pendientes.</EmptyText>
+              <EmptyText>No pending requests.</EmptyText>
             ) : (
               requests.map((request) => (
                 <div className="rounded-xl bg-[#f7f5ef] p-3" key={request.id}>
@@ -3169,7 +3169,7 @@ function FriendsPage({
           <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Sugerencias</h2>
           <div className="mt-4 grid gap-3">
             {suggestions.length === 0 ? (
-              <EmptyText>No hay sugerencias por ahora.</EmptyText>
+              <EmptyText>No suggestions yet.</EmptyText>
             ) : (
               suggestions.map((user) => (
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] p-3" key={user.id}>
@@ -3187,13 +3187,13 @@ function FriendsPage({
           <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Contactos</h2>
           <div className="mt-4 grid gap-3">
             {friends.length === 0 ? (
-              <EmptyText>Aun no tienes amigos agregados.</EmptyText>
+              <EmptyText>You have not added any friends yet.</EmptyText>
             ) : (
               friends.map((friend) => (
                 <div className="rounded-xl bg-[#f7f5ef] p-3" key={friend.id}>
                   <PersonRow user={friend} onOpenProfile={onOpenProfile} />
                   <button className={`${secondaryButtonClass} mt-3 w-full`} type="button" onClick={() => onMessage(friend.id)}>
-                    Mensaje
+                    Message
                   </button>
                 </div>
               ))
@@ -3228,8 +3228,8 @@ function MessagesPage({
     <section className="grid min-h-[calc(100vh-110px)] overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="border-r border-[#eee8dc]">
         <div className="border-b border-[#eee8dc] p-4">
-          <h1 className="text-2xl font-black">Mensajes</h1>
-          <p className="mt-1 text-xs text-[#6d746f]">Mensajes directos firmados por app signer.</p>
+          <h1 className="text-2xl font-black">Messages</h1>
+          <p className="mt-1 text-xs text-[#6d746f]">Direct messages signed by the app signer.</p>
         </div>
         <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-3">
           {conversations.map((conversation) => (
@@ -3244,13 +3244,13 @@ function MessagesPage({
               <Avatar name={conversation.peerName} src={conversation.peerAvatar} size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-black">{conversation.peerName}</p>
-                <p className="truncate text-xs text-[#6d746f]">{conversation.lastMessage || "Sin mensajes todavia"}</p>
+                <p className="truncate text-xs text-[#6d746f]">{conversation.lastMessage || "No messages yet"}</p>
               </div>
             </button>
           ))}
           {friends.length > 0 && (
             <div className="mt-4 border-t border-[#eee8dc] pt-3">
-              <p className="mb-2 text-xs font-black uppercase text-[#65736f]">Iniciar chat</p>
+              <p className="mb-2 text-xs font-black uppercase text-[#65736f]">Start chat</p>
               {friends.map((friend) => (
                 <button
                   className="mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]"
@@ -3273,7 +3273,7 @@ function MessagesPage({
               <Avatar name={activeConversation.peerName} src={activeConversation.peerAvatar} size="sm" />
               <div>
                 <h2 className="font-black">{activeConversation.peerName}</h2>
-                <p className="text-xs text-[#6d746f]">Chat privado firmado</p>
+                <p className="text-xs text-[#6d746f]">Signed private chat</p>
               </div>
             </header>
             <div className="flex-1 space-y-3 overflow-y-auto bg-[#f7f5ef] p-4">
@@ -3297,16 +3297,16 @@ function MessagesPage({
               <input
                 className="min-w-0 flex-1 rounded-full border border-[#ded7c9] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
                 name="content"
-                placeholder="Escribe un mensaje..."
+                placeholder="Write a message..."
               />
               <button className={primaryButtonClass} type="submit">
-                Enviar
+                Send
               </button>
             </form>
           </>
         ) : (
           <div className="grid flex-1 place-items-center p-8 text-center text-sm text-[#6d746f]">
-            Selecciona una conversacion o inicia una desde tus amigos.
+            Select a conversation or start one from your friends.
           </div>
         )}
       </div>
@@ -3336,9 +3336,9 @@ function SearchPage({
   return (
     <section className="space-y-4">
       <PageHeader
-        kicker="Buscar"
-        title={results ? `Resultados para "${results.query}"` : "Busqueda global"}
-        subtitle="Encuentra personas, paginas, grupos, publicaciones y lives desde un solo lugar."
+        kicker="Search"
+        title={results ? `Results for "${results.query}"` : "Global search"}
+        subtitle="Find people, pages, groups, posts, and lives in one place."
       />
       {history.length > 0 && (
         <div className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
@@ -3367,7 +3367,7 @@ function SearchPage({
               </button>
             ))}
           </SearchSection>
-          <SearchSection title="Paginas" empty="No encontramos paginas.">
+          <SearchSection title="Pages" empty="No pages found.">
             {results.pages.map((page) => (
               <button className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={page.id} type="button" onClick={() => onOpenPage(page.id)}>
                 <Avatar name={page.name} src={page.avatar} size="md" />
@@ -3378,7 +3378,7 @@ function SearchPage({
               </button>
             ))}
           </SearchSection>
-          <SearchSection title="Grupos" empty="No encontramos grupos.">
+          <SearchSection title="Groups" empty="No groups found.">
             {results.groups.map((group) => (
               <button className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={group.id} type="button" onClick={() => onOpenGroup(group.id)}>
                 <div className="size-11 overflow-hidden rounded-xl bg-[#17211f]">
@@ -3391,7 +3391,7 @@ function SearchPage({
               </button>
             ))}
           </SearchSection>
-          <SearchSection title="Publicaciones" empty="No encontramos publicaciones.">
+          <SearchSection title="Posts" empty="No posts found.">
             {results.posts.map((post) => (
               <button className="block w-full rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={post.id} type="button" onClick={() => onOpenPost(post.id)}>
                 <span className="block text-sm font-black">{post.authorName}</span>
@@ -3403,7 +3403,7 @@ function SearchPage({
             {results.lives.map((live) => (
               <button className="block w-full rounded-xl p-3 text-left hover:bg-[#f7f5ef]" key={live.id} type="button" onClick={() => onOpenLive(live.id)}>
                 <span className="block text-sm font-black">{live.title}</span>
-                <span className="mt-1 block text-xs text-[#6d746f]">{live.hostName} · {live.status === "LIVE" ? "En vivo" : "Replay"}</span>
+                <span className="mt-1 block text-xs text-[#6d746f]">{live.hostName} · {live.status === "LIVE" ? "Live" : "Replay"}</span>
               </button>
             ))}
           </SearchSection>
@@ -3447,47 +3447,47 @@ function EventsPage({
   return (
     <section className="space-y-4">
       <PageHeader
-        kicker="Eventos"
-        title="Eventos"
-        subtitle="Crea eventos personales, de paginas o grupos; invita amigos y marca asistencia o interes."
+        kicker="Events"
+        title="Events"
+        subtitle="Create personal, page, or group events; invite friends and mark attendance or interest."
       />
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Crear evento</h2>
+          <h2 className="text-lg font-black">Create event</h2>
           <div className="mt-4 space-y-3">
-            <input className={inputClass} name="title" placeholder="Nombre del evento" required />
-            <input className={inputClass} name="location" placeholder="Ubicacion" required />
+            <input className={inputClass} name="title" placeholder="Event name" required />
+            <input className={inputClass} name="location" placeholder="Location" required />
             <input className={inputClass} name="startsAt" required type="datetime-local" />
-            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Descripcion" />
+            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Description" />
             <select className={inputClass} name="pageId">
-              <option value="">Evento personal</option>
-              {myPages.map((page) => <option key={page.id} value={page.id}>Evento de pagina: {page.name}</option>)}
+              <option value="">Personal event</option>
+              {myPages.map((page) => <option key={page.id} value={page.id}>Page event: {page.name}</option>)}
             </select>
             <select className={inputClass} name="groupId">
-              <option value="">Sin grupo</option>
-              {myGroups.map((group) => <option key={group.id} value={group.id}>Evento de grupo: {group.name}</option>)}
+              <option value="">No group</option>
+              {myGroups.map((group) => <option key={group.id} value={group.id}>Group event: {group.name}</option>)}
             </select>
             <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-              Imagen del evento
+              Event image
               <input className="mt-2 block w-full text-xs" name="imageFile" type="file" accept="image/*" />
             </label>
           </div>
           <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
-            Crear evento
+            Create event
           </button>
         </form>
         {events.length === 0 ? (
-          <EmptyText>Aun no hay eventos.</EmptyText>
+          <EmptyText>There are no events yet.</EmptyText>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {events.map((event) => (
               <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={event.id}>
                 <div className="grid aspect-video place-items-center bg-[#17211f] text-sm font-black text-white/60">
-                  {event.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(event.imageUrl)} /> : "Evento"}
+                  {event.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(event.imageUrl)} /> : "Event"}
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-black uppercase text-[#b8741a]">
-                    {event.pageName ? `Pagina: ${event.pageName}` : event.groupName ? `Grupo: ${event.groupName}` : "Evento personal"}
+                    {event.pageName ? `Page: ${event.pageName}` : event.groupName ? `Group: ${event.groupName}` : "Personal event"}
                   </p>
                   <h2 className="mt-1 text-xl font-black">{event.title}</h2>
                   <p className="mt-1 text-sm text-[#6d746f]">{new Date(event.startsAt).toLocaleString()} · {event.location}</p>
@@ -3497,18 +3497,18 @@ function EventsPage({
                   </button>
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button className={event.myStatus === "GOING" ? primaryButtonClass : secondaryButtonClass} type="button" onClick={() => onRsvp(event.id, "GOING")}>
-                      Asistire ({event.goingCount})
+                      Going ({event.goingCount})
                     </button>
                     <button className={event.myStatus === "INTERESTED" ? primaryButtonClass : secondaryButtonClass} type="button" onClick={() => onRsvp(event.id, "INTERESTED")}>
-                      Me interesa ({event.interestedCount})
+                      Interested ({event.interestedCount})
                     </button>
                   </div>
                   <form className="mt-3 flex gap-2" onSubmit={(formEvent) => onInvite(formEvent, event.id)}>
                     <select className={`${inputClass} min-w-0 flex-1`} name="userId" required>
-                      <option value="">Invitar amigo...</option>
+                      <option value="">Invite friend...</option>
                       {friends.map((friend) => <option key={friend.id} value={friend.id}>{friend.name}</option>)}
                     </select>
-                    <button className={secondaryButtonClass}>Invitar</button>
+                    <button className={secondaryButtonClass}>Invite</button>
                   </form>
                 </div>
               </article>
@@ -3541,25 +3541,25 @@ function MarketplacePage({
     <section className="space-y-4">
       <PageHeader
         kicker="Marketplace"
-        title="Compra y venta"
-        subtitle="Publica productos con foto, precio, categoria y ubicacion. El contacto usa Messenger dentro de la app."
+        title="Marketplace"
+        subtitle="List products with a photo, price, category, and location. Contact happens through Messenger in the app."
       />
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Vender producto</h2>
+          <h2 className="text-lg font-black">Sell product</h2>
           <div className="mt-4 space-y-3">
-            <input className={inputClass} name="title" placeholder="Producto" required />
-            <input className={inputClass} name="category" placeholder="Categoria" />
-            <input className={inputClass} min="0" name="price" placeholder="Precio" required step="0.01" type="number" />
-            <input className={inputClass} name="location" placeholder="Ubicacion" required />
-            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Descripcion" />
+            <input className={inputClass} name="title" placeholder="Product" required />
+            <input className={inputClass} name="category" placeholder="Category" />
+            <input className={inputClass} min="0" name="price" placeholder="Price" required step="0.01" type="number" />
+            <input className={inputClass} name="location" placeholder="Location" required />
+            <textarea className={`${inputClass} min-h-24 resize-none`} name="description" placeholder="Description" />
             <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-              Foto del producto
+              Product photo
               <input className="mt-2 block w-full text-xs" name="imageFile" type="file" accept="image/*" />
             </label>
           </div>
           <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
-            Publicar producto
+            Post product
           </button>
         </form>
         <div className="space-y-4">
@@ -3573,13 +3573,13 @@ function MarketplacePage({
             </div>
           )}
           {products.length === 0 ? (
-            <EmptyText>Aun no hay productos publicados.</EmptyText>
+            <EmptyText>There are no products yet.</EmptyText>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {products.map((product) => (
                 <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={product.id}>
                   <div className="grid aspect-square place-items-center bg-[#17211f] text-sm font-black text-white/60">
-                    {product.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(product.imageUrl)} /> : "Sin foto"}
+                    {product.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(product.imageUrl)} /> : "No photo"}
                   </div>
                   <div className="p-4">
                     <p className="text-xs font-black uppercase text-[#b8741a]">{product.category}</p>
@@ -3593,7 +3593,7 @@ function MarketplacePage({
                     </button>
                     {product.sellerId !== viewerId && (
                       <button className={`${primaryButtonClass} mt-4 w-full`} type="button" onClick={() => onContactSeller(product.sellerId)}>
-                        Enviar mensaje
+                        Send message
                       </button>
                     )}
                   </div>
@@ -3630,40 +3630,40 @@ function GroupsPage({
 
   return (
     <section className="space-y-4">
-      <PageHeader kicker="Comunidades" title="Grupos" subtitle="Crea comunidades, unete a grupos y publica dentro de ellos." />
+      <PageHeader kicker="Communities" title="Groups" subtitle="Create communities, join groups, and post in them." />
       <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
         <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onCreate}>
-          <h2 className="text-lg font-black">Crear grupo</h2>
+          <h2 className="text-lg font-black">Create group</h2>
           <div className="mt-4 space-y-3">
-            <input className={inputClass} name="name" placeholder="Nombre del grupo" required />
-            <textarea className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="description" placeholder="Descripcion" />
+            <input className={inputClass} name="name" placeholder="Group name" required />
+            <textarea className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="description" placeholder="Description" />
             <select className={inputClass} name="privacy">
-              <option value="PUBLIC">Publico</option>
-              <option value="PRIVATE">Privado</option>
+              <option value="PUBLIC">Public</option>
+              <option value="PRIVATE">Private</option>
             </select>
             <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-              Portada
+              Cover
               <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
             </label>
           </div>
           <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
-            Crear grupo
+            Create group
           </button>
         </form>
 
         <div className="space-y-4">
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Tus grupos</h2>
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Your groups</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {myGroups.length === 0 ? <EmptyText>Aun no perteneces a grupos.</EmptyText> : myGroups.map((group) => (
+              {myGroups.length === 0 ? <EmptyText>You do not belong to any groups yet.</EmptyText> : myGroups.map((group) => (
                 <GroupCard key={group.id} group={group} onOpen={onOpenGroup} onToggleJoin={onToggleJoin} />
               ))}
             </div>
           </section>
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explorar grupos</h2>
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explore groups</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {groups.length === 0 ? <EmptyText>No hay grupos todavia.</EmptyText> : groups.map((group) => (
+              {groups.length === 0 ? <EmptyText>There are no groups yet.</EmptyText> : groups.map((group) => (
                 <GroupCard key={group.id} group={{ ...group, joinedByMe: group.joinedByMe || myGroupIds.has(group.id) }} onOpen={onOpenGroup} onToggleJoin={onToggleJoin} />
               ))}
             </div>
@@ -3738,7 +3738,7 @@ function GroupDetail({
 }) {
   return (
     <section className="mx-auto w-full max-w-[1100px] space-y-4">
-      <button className={secondaryButtonClass} type="button" onClick={onBack}>Volver a grupos</button>
+      <button className={secondaryButtonClass} type="button" onClick={onBack}>Back to groups</button>
       <div className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm">
         <div className="h-64 bg-[#17211f]">{group.cover && <img alt="" className="size-full object-cover" src={mediaSrc(group.cover)} />}</div>
         <div className="p-6">
@@ -3756,7 +3756,7 @@ function GroupDetail({
       </div>
       {group.joinedByMe && <GroupPostComposer group={group} onSubmit={onCreatePost} />}
       {posts.length === 0 ? (
-        <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">Este grupo aun no tiene publicaciones.</p>
+        <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">This group has no posts yet.</p>
       ) : (
         <div className="space-y-4">{posts.map((post) => (
           <FeedPost
@@ -3783,9 +3783,9 @@ function GroupPostComposer({ group, onSubmit }: { group: SocialGroup; onSubmit: 
   return (
     <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
       <input name="groupId" type="hidden" value={group.id} />
-      <textarea className="min-h-24 w-full resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="content" placeholder={`Publicar en ${group.name}`} />
+      <textarea className="min-h-24 w-full resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="content" placeholder={`Post in ${group.name}`} />
       <div className="mt-3 flex justify-end border-t border-[#eee8dc] pt-3">
-        <button className={primaryButtonClass} type="submit">Publicar</button>
+        <button className={primaryButtonClass} type="submit">Post</button>
       </div>
     </form>
   );
@@ -3812,51 +3812,51 @@ function PagesPage({
     <section className="space-y-4">
       <PageHeader
         kicker="Comunidad"
-        title="Paginas"
-        subtitle="Crea presencia para marcas, creadores, negocios o proyectos con portada, foto e informacion publica."
+        title="Pages"
+        subtitle="Create a presence for brands, creators, businesses, or projects with a cover, photo, and public information."
       />
 
       <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
         <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Crear pagina</h2>
+          <h2 className="text-lg font-black">Create page</h2>
           <div className="mt-4 space-y-3">
             <input
               className="w-full rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
               name="name"
-              placeholder="Nombre de la pagina"
+              placeholder="Page name"
               required
             />
             <input
               className="w-full rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
               name="category"
-              placeholder="Categoria"
+              placeholder="Category"
               required
             />
             <textarea
               className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
               name="description"
-              placeholder="Descripcion"
+              placeholder="Description"
             />
             <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-              Foto de perfil
+              Profile photo
               <input className="mt-2 block w-full text-xs" name="avatarFile" type="file" accept="image/*" />
             </label>
             <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-              Portada
+              Cover
               <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
             </label>
           </div>
           <button className={`${primaryButtonClass} mt-4 w-full`} disabled={loading} type="submit">
-            Crear pagina
+            Create page
           </button>
         </form>
 
         <div className="space-y-4">
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Tus paginas</h2>
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Your pages</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {myPages.length === 0 ? (
-                <EmptyText>Aun no administras paginas.</EmptyText>
+                <EmptyText>You do not manage any pages yet.</EmptyText>
               ) : (
                 myPages.map((page) => <PageCard key={page.id} page={page} managed onOpen={onOpenPage} />)
               )}
@@ -3864,10 +3864,10 @@ function PagesPage({
           </section>
 
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explorar paginas</h2>
+            <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Explore pages</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {pages.length === 0 ? (
-                <EmptyText>No hay paginas creadas todavia.</EmptyText>
+                <EmptyText>There are no pages yet.</EmptyText>
               ) : (
                 pages.map((page) => (
                   <PageCard
@@ -3970,7 +3970,7 @@ function PageDetail({
   return (
     <section className="mx-auto w-full max-w-[1100px] space-y-4">
       <button className={secondaryButtonClass} type="button" onClick={onBack}>
-        Volver a paginas
+        Back to pages
       </button>
       <div className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm">
         <div className="h-64 bg-[#17211f]">
@@ -3990,7 +3990,7 @@ function PageDetail({
             </div>
             {managed ? (
               <span className="rounded-xl bg-[#f2c166] px-4 py-2 text-sm font-black text-[#17211f]">
-                Administras esta pagina
+                You manage this page
               </span>
             ) : (
               <button
@@ -4010,31 +4010,31 @@ function PageDetail({
         <>
           <details className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
             <summary className="cursor-pointer list-none text-sm font-black text-[#17211f]">
-              Editar informacion de la pagina
+              Edit page information
             </summary>
             <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={(event) => onUpdate(event, page)}>
               <input
                 className={inputClass}
                 defaultValue={page.name}
                 name="name"
-                placeholder="Nombre"
+                placeholder="Name"
                 required
               />
               <input
                 className={inputClass}
                 defaultValue={page.category}
                 name="category"
-                placeholder="Categoria"
+                placeholder="Category"
                 required
               />
               <textarea
                 className={`${inputClass} min-h-24 resize-none md:col-span-2`}
                 defaultValue={page.description || ""}
                 name="description"
-                placeholder="Descripcion"
+                placeholder="Description"
               />
               <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
-                Cambiar foto de perfil
+                Change profile photo
                 <input className="mt-2 block w-full text-xs" name="avatarFile" type="file" accept="image/*" />
               </label>
               <label className="block rounded-xl border border-dashed border-[#c9bfad] bg-[#f7f5ef] p-3 text-sm font-semibold text-[#53645f]">
@@ -4042,7 +4042,7 @@ function PageDetail({
                 <input className="mt-2 block w-full text-xs" name="coverFile" type="file" accept="image/*" />
               </label>
               <button className={`${primaryButtonClass} md:col-span-2`} type="submit">
-                Guardar cambios
+                Save changes
               </button>
             </form>
           </details>
@@ -4052,7 +4052,7 @@ function PageDetail({
 
       {posts.length === 0 ? (
         <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
-          Esta pagina aun no tiene publicaciones.
+          This page has no posts yet.
         </p>
       ) : (
         <div className="space-y-4">
@@ -4105,7 +4105,7 @@ function PagePostComposer({
         <textarea
           className="min-h-24 flex-1 resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
           name="content"
-          placeholder={`Publicar como ${page.name}`}
+          placeholder={`Post como ${page.name}`}
         />
       </div>
       <input
@@ -4120,11 +4120,11 @@ function PagePostComposer({
       <div className="mt-3 flex items-center justify-between border-t border-[#eee8dc] pt-3">
         <div className="flex gap-2">
           <button className={secondaryButtonClass} type="button" onClick={() => inputRef.current?.click()}>
-            Foto/video
+            Photo/video
           </button>
         </div>
         <button className={primaryButtonClass} type="submit">
-          Publicar
+          Post
         </button>
       </div>
     </form>
@@ -4163,13 +4163,13 @@ function LivesPage({
       />
       <input
         className="w-full rounded-2xl border border-[#ded7c9] bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#49625b]"
-        placeholder="Buscar por nombre o titulo del live..."
+        placeholder="Search by live name or title..."
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
       {filteredLives.length === 0 ? (
         <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">
-          No hay lives activos que coincidan con tu busqueda.
+          No active lives match your search.
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -4241,15 +4241,15 @@ function LiveCard({
               items={[
                 {
                   icon: "E",
-                  label: "Editar live",
-                  description: "Cambiar el titulo del live.",
+                  label: "Edit live",
+                  description: "Change this live title.",
                   onClick: () => onEdit?.(live),
                 },
                 {
                   destructive: true,
                   icon: "D",
-                  label: "Eliminar live",
-                  description: "Borrar este live de tu perfil.",
+                  label: "Delete live",
+                  description: "Delete this live from your profile.",
                   onClick: () => onDelete?.(live.id),
                 },
               ]}
@@ -4258,7 +4258,7 @@ function LiveCard({
           <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
             live.status === "LIVE" ? "bg-red-600 text-white" : "bg-[#ece7dc] text-[#17211f]"
           }`}>
-            {live.status === "LIVE" ? "En vivo" : "Replay"}
+            {live.status === "LIVE" ? "Live" : "Replay"}
           </span>
         </div>
       </div>
@@ -4276,7 +4276,7 @@ function LiveCard({
         />
       ) : (
         <div className="grid aspect-video place-items-center rounded-xl bg-[#17211f] text-sm font-bold text-white/70">
-          {live.status === "LIVE" ? "Esperando imagen del live" : "Sin grabacion"}
+          {live.status === "LIVE" ? "Waiting for live image" : "No recording"}
         </div>
       )}
       <h2 className="mt-3 font-black">{live.title}</h2>
@@ -4314,12 +4314,12 @@ function LiveChatPanel({
     <section className={compact ? "" : "flex h-full min-h-[360px] flex-col bg-[#f8faf9]"}>
       <div className={compact ? "mb-2 flex items-center justify-between" : "border-b border-[#e4e6eb] p-4"}>
         <h3 className="text-sm font-black text-[#050505]">Chat en vivo</h3>
-        <p className="text-xs font-semibold text-[#65676b]">{messages.length} mensajes</p>
+        <p className="text-xs font-semibold text-[#65676b]">{messages.length} messages</p>
       </div>
       <div className={`${compact ? "max-h-44" : "min-h-0 flex-1"} space-y-3 overflow-y-auto ${compact ? "" : "p-4"}`}>
         {visibleMessages.length === 0 ? (
           <p className="rounded-xl bg-white p-3 text-sm text-[#65676b]">
-            Aun no hay mensajes en este live.
+            There are no messages in this live yet.
           </p>
         ) : (
           visibleMessages.map((message) => (
@@ -4348,7 +4348,7 @@ function LiveChatPanel({
             placeholder="Escribe en el chat..."
           />
           <button className="rounded-full bg-[#1877f2] px-4 py-2 text-sm font-black text-white" type="submit">
-            Enviar
+            Send
           </button>
         </form>
       )}
@@ -4474,7 +4474,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
       const message = err instanceof Error ? err.message : "Transaccion rechazada";
       setTxError(
         message.toLowerCase().includes("insufficient funds")
-          ? "Tu wallet no tiene suficiente Sepolia ETH para pagar gas."
+          ? "Your wallet does not have enough Sepolia ETH for gas."
           : message.split("\n")[0],
       );
     }
@@ -4484,15 +4484,15 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
   const paidUntilDate =
     paidUntil && paidUntil > ZERO_BIGINT
       ? new Date(Number(paidUntil) * 1000).toLocaleDateString()
-      : "Sin storage";
+      : "No storage";
   const socialIdText =
-    socialId && socialId > ZERO_BIGINT ? socialId.toString() : "No registrado";
+    socialId && socialId > ZERO_BIGINT ? socialId.toString() : "Not registered";
 
   return (
     <div className="space-y-3 rounded-2xl border border-[#ded7c9] bg-white p-3 shadow-sm">
       <div>
         <p className="text-xs font-semibold text-[#6d746f]">Wallet conectada</p>
-        <p className="break-all text-xs font-semibold">{address ?? "Sin wallet"}</p>
+        <p className="break-all text-xs font-semibold">{address ?? "No wallet"}</p>
       </div>
       <div>
         <p className="text-xs font-semibold text-[#6d746f]">Custody wallet</p>
@@ -4500,14 +4500,14 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
       </div>
       <div>
         <p className="text-xs font-semibold text-[#6d746f]">App signer</p>
-        <p className="break-all text-xs">{appSigner ?? "Sin signer"}</p>
+        <p className="break-all text-xs">{appSigner ?? "No signer"}</p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <span className="rounded-xl bg-[#f4efe5] p-2">
           ID: {socialIdText}
         </span>
         <span className="rounded-xl bg-[#f4efe5] p-2">
-          Key: {keyRegistered ? "Registrada" : "Pendiente"}
+          Key: {keyRegistered ? "Registered" : "Pending"}
         </span>
         <span className="col-span-2 rounded-xl bg-[#f4efe5] p-2">
           Storage: {paidUntilDate}
@@ -4516,7 +4516,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
       <div className="grid gap-2">
         {(!idReady || !keyReady || !storageReady) && (
           <p className="rounded-xl bg-[#fff4d6] p-2 text-xs font-semibold text-[#6b4b00]">
-            Configura contratos Sepolia faltantes para habilitar todas las acciones onchain.
+            Configure the missing Sepolia contracts to enable all onchain actions.
           </p>
         )}
         {txError && (
@@ -4530,7 +4530,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
             disabled={!idReady || !address || busy}
             onClick={registerIdentity}
           >
-            Registrar ID
+            Register ID
           </button>
         )}
         <button
@@ -4538,7 +4538,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
           disabled={!keyReady || !hasSocialId || !signerKey || Boolean(keyRegistered) || busy}
           onClick={addAppSigner}
         >
-          Registrar signer
+          Register signer
         </button>
         <button
           className={secondaryButtonClass}
@@ -4650,7 +4650,7 @@ function ProfilePage({
             <div className="size-full bg-gradient-to-b from-[#eef1f5] to-[#9aa5b5]" />
           )}
           <label className="absolute bottom-4 right-4 cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-bold text-[#1c1e21] shadow hover:bg-[#f0f2f5]">
-            Editar foto de portada
+            Edit cover photo
             <input className="hidden" form="profile-edit-form" name="coverFile" type="file" accept="image/*" onChange={preview(setCoverPreview)} />
           </label>
         </div>
@@ -4668,34 +4668,34 @@ function ProfilePage({
               <div className="pb-2">
                 <h1 className="text-3xl font-black text-[#050505] md:text-4xl">{session.user.name}</h1>
                 <p className="text-sm font-semibold text-[#65676b]">
-                  {posts.length} publicaciones · {lives.length} lives
+                  {posts.length} posts · {lives.length} lives
                 </p>
                 {session.user.bio && <p className="mt-2 max-w-2xl text-[15px] text-[#050505]">{session.user.bio}</p>}
               </div>
             </div>
             <button className="rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => setEditOpen(true)}>
-              Editar perfil
+              Edit profile
             </button>
           </div>
 
           <nav className="flex gap-1 py-1 text-sm font-bold text-[#65676b]">
             <button className={`rounded-md px-5 py-3 ${tab === "posts" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("posts")}>
-              Publicaciones
+              Posts
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "photos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("photos")}>
-              Fotos
+              Photos
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "videos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("videos")}>
               Videos
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "friends" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("friends")}>
-              Amigos
+              Friends
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "pages" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("pages")}>
-              Paginas
+              Pages
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "groups" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("groups")}>
-              Grupos
+              Groups
             </button>
             <button className={`rounded-md px-5 py-3 ${tab === "lives" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("lives")}>
               Lives
@@ -4708,7 +4708,7 @@ function ProfilePage({
         <div className="fixed inset-0 z-40 grid place-items-center bg-black/55 px-4">
           <form id="profile-edit-form" className="w-full max-w-xl rounded-lg bg-white p-4 shadow-2xl" onSubmit={onSubmit}>
             <div className="mb-4 flex items-center justify-between border-b border-[#dadde1] pb-3">
-              <h2 className="text-xl font-black text-[#050505]">Editar perfil</h2>
+              <h2 className="text-xl font-black text-[#050505]">Edit profile</h2>
               <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={() => setEditOpen(false)}>
                 x
               </button>
@@ -4716,7 +4716,7 @@ function ProfilePage({
             <input name="avatar" type="hidden" value={session.user.avatar ?? ""} />
             <input name="cover" type="hidden" value={session.user.cover ?? ""} />
             <label className="text-sm font-bold text-[#050505]">
-              Nombre
+              Name
               <input className={inputClass} defaultValue={session.user.name} name="name" required />
             </label>
             <label className="mt-3 block text-sm font-bold text-[#050505]">
@@ -4725,7 +4725,7 @@ function ProfilePage({
             </label>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className={secondaryButtonClass}>
-                Subir foto de perfil
+                Upload profile photo
                 <input className="hidden" name="avatarFile" type="file" accept="image/*" onChange={preview(setAvatarPreview)} />
               </label>
               <label className={secondaryButtonClass}>
@@ -4735,24 +4735,24 @@ function ProfilePage({
             </div>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
             <button className="mt-4 w-full rounded-md bg-[#1877f2] px-5 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" disabled={loading}>
-              {loading ? "Guardando..." : "Guardar"}
+              {loading ? "Saving..." : "Save"}
             </button>
           </form>
         </div>
       )}
 
       {tab === "photos" ? (
-        <ProfileMediaGrid empty="Aun no tienes fotos." posts={posts.filter((post) => post.mediaType === "IMAGE" && post.mediaUrl)} />
+        <ProfileMediaGrid empty="You have no photos yet." posts={posts.filter((post) => post.mediaType === "IMAGE" && post.mediaUrl)} />
       ) : tab === "videos" ? (
-        <ProfileMediaGrid empty="Aun no tienes videos." posts={posts.filter((post) => post.mediaType === "VIDEO" && post.mediaUrl)} />
+        <ProfileMediaGrid empty="You have no videos yet." posts={posts.filter((post) => post.mediaType === "VIDEO" && post.mediaUrl)} />
       ) : tab === "friends" ? (
-        <ProfileList empty="Aun no tienes amigos agregados.">
+        <ProfileList empty="You have not added any friends yet.">
           {friends.map((friend) => (
             <PersonRow key={friend.id} user={friend} onOpenProfile={onOpenProfile} />
           ))}
         </ProfileList>
       ) : tab === "pages" ? (
-        <ProfileList empty="Aun no administras paginas.">
+        <ProfileList empty="You do not manage any pages yet.">
           {myPages.map((page) => (
             <div className="flex items-center gap-3" key={page.id}>
               <Avatar name={page.name} src={page.avatar} size="md" />
@@ -4764,7 +4764,7 @@ function ProfilePage({
           ))}
         </ProfileList>
       ) : tab === "groups" ? (
-        <ProfileList empty="Aun no perteneces a grupos.">
+        <ProfileList empty="You do not belong to any groups yet.">
           {myGroups.map((group) => (
             <div className="flex items-center gap-3" key={group.id}>
               <div className="grid size-11 place-items-center rounded-xl bg-[#17211f] text-sm font-black text-[#f2c166]">G</div>
@@ -4781,14 +4781,14 @@ function ProfilePage({
             <section className="rounded-lg bg-white p-4 shadow-sm">
               <h2 className="text-xl font-black text-[#050505]">Intro</h2>
               <p className="mt-3 text-center text-[15px] text-[#050505]">
-                {session.user.bio || "Agrega una bio para contar mas sobre ti."}
+                {session.user.bio || "Add a bio to tell more about yourself."}
               </p>
               <button className="mt-4 w-full rounded-md bg-[#e4e6eb] py-2 text-sm font-bold text-[#050505]" type="button" onClick={() => setEditOpen(true)}>
-                Editar detalles
+                Edit details
               </button>
             </section>
             <section className="rounded-lg bg-white p-4 shadow-sm">
-              <h2 className="text-xl font-black text-[#050505]">Fotos</h2>
+              <h2 className="text-xl font-black text-[#050505]">Photos</h2>
               <div className="mt-3 grid grid-cols-3 gap-1 overflow-hidden rounded-lg">
                 {posts.filter((post) => post.mediaType === "IMAGE" && post.mediaUrl).slice(0, 9).map((post) => (
                   <img alt="" className="aspect-square w-full object-cover" key={post.id} src={mediaSrc(post.mediaUrl as string)} />
@@ -4799,7 +4799,7 @@ function ProfilePage({
           <div className="space-y-4">
             {posts.length === 0 ? (
               <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
-                Aun no tienes publicaciones.
+                You have no posts yet.
               </p>
             ) : (
               posts.map((post) => (
@@ -4817,7 +4817,7 @@ function ProfilePage({
         <div className="grid gap-4 md:grid-cols-2">
           {lives.length === 0 ? (
             <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
-              Aun no tienes lives guardados.
+              You have no saved lives yet.
             </p>
           ) : (
             lives.map((live) => (
@@ -4857,11 +4857,11 @@ function PublicProfilePage({
   onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
 }) {
   const relationshipText = {
-    SELF: "Tu perfil",
-    FRIEND: "Amigos",
-    REQUEST_SENT: "Solicitud enviada",
-    REQUEST_RECEIVED: "Te envio solicitud",
-    NONE: "Agregar amigo",
+    SELF: "Your profile",
+    FRIEND: "Friends",
+    REQUEST_SENT: "Request sent",
+    REQUEST_RECEIVED: "Sent you a request",
+    NONE: "Add friend",
   }[profile.relationship];
 
   return (
@@ -4892,7 +4892,7 @@ function PublicProfilePage({
                   type="button"
                   onClick={() => onBlock(profile.user.id)}
                 >
-                  Bloquear
+                  Block
                 </button>
               )}
             </div>
@@ -4904,7 +4904,7 @@ function PublicProfilePage({
         <aside className="space-y-4">
           <section className="rounded-lg bg-white p-4 shadow-sm">
             <h2 className="text-xl font-black text-[#050505]">Intro</h2>
-            <p className="mt-3 text-[15px] text-[#050505]">{profile.user.bio || "Sin bio por ahora."}</p>
+            <p className="mt-3 text-[15px] text-[#050505]">{profile.user.bio || "No bio yet."}</p>
           </section>
           <section className="rounded-lg bg-white p-4 shadow-sm">
             <h2 className="text-xl font-black text-[#050505]">Lives</h2>
@@ -4924,7 +4924,7 @@ function PublicProfilePage({
           ))}
           {profile.posts.length === 0 ? (
             <p className="rounded-lg bg-white p-8 text-center text-sm text-[#65676b] shadow-sm">
-              Esta persona aun no tiene publicaciones.
+              This person has no posts yet.
             </p>
           ) : (
             profile.posts.map((post) => (
@@ -4934,7 +4934,7 @@ function PublicProfilePage({
                   <div>
                     <h2 className="text-sm font-semibold">{(post.page ?? post.author).name}</h2>
                     <p className="text-xs text-[#6d746f]">
-                      {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+                      {post.page ? `${post.page.category || "Page"} · ` : ""}
                       {new Date(post.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -4969,7 +4969,7 @@ function ProfilePostCard({
           <div>
             <h2 className="text-sm font-semibold">{actor.name}</h2>
             <p className="text-xs text-[#6d746f]">
-              {post.page ? `${post.page.category || "Pagina"} · ` : ""}
+              {post.page ? `${post.page.category || "Page"} · ` : ""}
               {new Date(post.createdAt).toLocaleString()}
             </p>
           </div>
@@ -4978,15 +4978,15 @@ function ProfilePostCard({
           items={[
             {
               icon: "E",
-              label: "Editar publicacion",
-              description: "Cambiar el texto de esta publicacion.",
+              label: "Edit post",
+              description: "Change this post text.",
               onClick: () => onEdit(post),
             },
             {
               destructive: true,
               icon: "D",
-              label: "Eliminar publicacion",
-              description: "Quitarla de tu perfil y del inicio.",
+              label: "Delete post",
+              description: "Remove it from your profile and feed.",
               onClick: () => onDelete(post.id),
             },
           ]}
@@ -5019,7 +5019,7 @@ function AuthForm({
         {createElement("appkit-button")}
       </div>
       {walletLoading && (
-        <p className="text-center text-sm text-[#6d746f]">Firmando acceso...</p>
+        <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
       )}
       <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[#6d746f]">
         <span className="h-px flex-1 bg-[#ded7c9]" />
@@ -5027,7 +5027,7 @@ function AuthForm({
         <span className="h-px flex-1 bg-[#ded7c9]" />
       </div>
       {mode === "register" && (
-        <input className={inputClass} name="name" placeholder="Nombre" required />
+        <input className={inputClass} name="name" placeholder="Name" required />
       )}
       <input className={inputClass} name="email" placeholder="Email" required type="email" />
       <input
@@ -5040,7 +5040,7 @@ function AuthForm({
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button className={`${primaryButtonClass} w-full`} disabled={loading}>
-        {loading ? "Enviando..." : mode === "login" ? "Iniciar sesion" : "Crear cuenta"}
+        {loading ? "Sending..." : mode === "login" ? "Sign in" : "Create account"}
       </button>
       <div className="border-t border-[#ded7c9] pt-4 text-center">
         <button
@@ -5048,7 +5048,7 @@ function AuthForm({
           type="button"
           onClick={() => onModeChange(mode === "login" ? "register" : "login")}
         >
-          {mode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
+          {mode === "login" ? "Create a new account" : "I already have an account"}
         </button>
       </div>
     </form>
@@ -5129,16 +5129,16 @@ function EditContentModal({
             className="mt-4 w-full rounded-lg border border-[#ccd0d5] bg-white px-3 py-3 text-[15px] outline-none focus:border-[#1877f2]"
             defaultValue={target.value}
             name="value"
-            placeholder="Titulo"
+            placeholder="Title"
             required
           />
         )}
         <div className="mt-4 flex justify-end gap-2 border-t border-[#dadde1] pt-3">
           <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
-            Cancelar
+            Cancel
           </button>
           <button className="rounded-md bg-[#1877f2] px-4 py-2 text-sm font-bold text-white disabled:opacity-60" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Saving..." : "Save"}
           </button>
         </div>
       </form>
@@ -5167,39 +5167,39 @@ function SharePostModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
       <section className="w-full max-w-xl rounded-lg bg-white p-4 shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#dadde1] pb-3">
-          <h2 className="text-xl font-black text-[#050505]">Compartir publicacion</h2>
+          <h2 className="text-xl font-black text-[#050505]">Share post</h2>
           <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>
             x
           </button>
         </div>
         <div className="mt-4 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3">
           <p className="text-sm font-black">{(post.page ?? post.author).name}</p>
-          <p className="mt-1 line-clamp-3 text-sm text-[#53645f]">{post.content || "Publicacion con media"}</p>
+          <p className="mt-1 line-clamp-3 text-sm text-[#53645f]">{post.content || "Post with media"}</p>
         </div>
         <form className="mt-4 space-y-3" onSubmit={onShare}>
-          <textarea className={`${inputClass} min-h-24 resize-none`} name="content" placeholder="Agrega un comentario..." />
+          <textarea className={`${inputClass} min-h-24 resize-none`} name="content" placeholder="Agrega un comments?..." />
           <select className={inputClass} name="pageId">
-            <option value="">Compartir en mi perfil</option>
+            <option value="">Share to my profile</option>
             {myPages.map((page) => (
-              <option key={page.id} value={page.id}>Compartir como {page.name}</option>
+              <option key={page.id} value={page.id}>Share como {page.name}</option>
             ))}
           </select>
           <button className={`${primaryButtonClass} w-full`} disabled={loading}>
-            Compartir
+            Share
           </button>
         </form>
         <form className="mt-4 border-t border-[#dadde1] pt-4" onSubmit={onMessenger}>
           <div className="grid gap-3 md:grid-cols-[1fr_180px]">
-            <input className={inputClass} name="content" placeholder="Mensaje opcional" />
+            <input className={inputClass} name="content" placeholder="Message opcional" />
             <select className={inputClass} name="peerId" required>
-              <option value="">Enviar a...</option>
+              <option value="">Send a...</option>
               {friends.map((friend) => (
                 <option key={friend.id} value={friend.id}>{friend.name}</option>
               ))}
             </select>
           </div>
           <button className={`${secondaryButtonClass} mt-3 w-full`} disabled={loading}>
-            Enviar por Messenger
+            Send por Messenger
           </button>
         </form>
       </section>
@@ -5222,22 +5222,22 @@ function ReportPostModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 px-4">
       <section className="w-full max-w-md rounded-lg bg-white p-4 shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#dadde1] pb-3">
-          <h2 className="text-xl font-black text-[#050505]">Reportar publicacion</h2>
+          <h2 className="text-xl font-black text-[#050505]">Report post</h2>
           <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>
             x
           </button>
         </div>
         <p className="mt-3 line-clamp-3 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3 text-sm text-[#53645f]">
-          {post.content || "Publicacion con media"}
+          {post.content || "Post with media"}
         </p>
         <form className="mt-4 space-y-3" onSubmit={onReport}>
-          <textarea className={`${inputClass} min-h-24 resize-none`} name="reason" placeholder="Describe el problema..." required />
+          <textarea className={`${inputClass} min-h-24 resize-none`} name="reason" placeholder="Describe the issue..." required />
           <div className="flex justify-end gap-2">
             <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
-              Cancelar
+              Cancel
             </button>
             <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60" disabled={loading}>
-              {loading ? "Enviando..." : "Reportar"}
+              {loading ? "Sending..." : "Reportar"}
             </button>
           </div>
         </form>
@@ -5264,7 +5264,7 @@ function ConfirmDeleteModal({
         <p className="mt-2 text-sm text-[#65676b]">{target.description}</p>
         <div className="mt-5 flex justify-end gap-2 border-t border-[#dadde1] pt-3">
           <button className="rounded-md bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#050505]" type="button" onClick={onClose}>
-            Cancelar
+            Cancel
           </button>
           <button
             className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
@@ -5272,7 +5272,7 @@ function ConfirmDeleteModal({
             type="button"
             onClick={onConfirm}
           >
-            {loading ? "Eliminando..." : "Eliminar"}
+            {loading ? "Deleting..." : "Delete"}
           </button>
         </div>
       </section>
