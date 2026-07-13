@@ -2063,7 +2063,7 @@ function MobileDock({ view, onNavigate }: { view: AppView; onNavigate: (view: Ap
   ];
 
   return (
-    <nav aria-label="Mobile navigation" className="nexo-mobile-dock md:hidden">
+    <nav aria-label="Mobile navigation" className="nexo-mobile-dock">
       {items.map((item) => (
         <button
           aria-current={view === item.view ? "page" : undefined}
@@ -2111,6 +2111,8 @@ function TopBar({
     { label: "Lives", view: "lives" },
     { label: "Profile", view: "profile" },
   ];
+  const primaryNavItems = navItems.slice(0, 5);
+  const moreNavItems = navItems.slice(5);
 
   return (
     <header className="nexo-topbar sticky top-0 z-20 border bg-[#fffdf8]/90 backdrop-blur">
@@ -2133,7 +2135,7 @@ function TopBar({
           />
         </form>
         <nav className="mx-auto hidden h-full items-center gap-2 md:flex">
-          {navItems.map((item) => (
+          {primaryNavItems.map((item) => (
             <button
               className={`h-11 rounded-xl px-6 text-sm font-semibold hover:bg-[#ece7dc] ${
                 view === item.view ? "bg-[#17211f] text-white" : "text-[#65736f]"
@@ -2144,6 +2146,25 @@ function TopBar({
               {item.label}
             </button>
           ))}
+          <details className="nexo-nav-more">
+            <summary className="h-11 cursor-pointer rounded-xl px-4 py-3 text-sm font-semibold text-[#65736f] hover:bg-[#ece7dc]">
+              More
+            </summary>
+            <div role="menu">
+              {moreNavItems.map((item) => (
+                <button
+                  className={`rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-[#ece7dc] ${
+                    view === item.view ? "bg-[#17211f] text-white" : "text-[#53645f]"
+                  }`}
+                  key={item.view}
+                  onClick={() => onNavigate(item.view)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </details>
         </nav>
         <details className="relative">
           <summary
@@ -2298,7 +2319,7 @@ function Stories({
   }
 
   return (
-    <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+    <section className="nexo-stories rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
       {creating && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-[#17211f]/75 px-4 backdrop-blur-sm">
           <form
@@ -2354,9 +2375,9 @@ function Stories({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="nexo-story-row">
         <button
-          className="relative h-48 overflow-hidden rounded-2xl border border-dashed border-[#b8ad9b] bg-[#fffaf0] text-left"
+          className="nexo-story-card relative overflow-hidden rounded-2xl border border-dashed border-[#b8ad9b] bg-[#fffaf0] text-left"
           onClick={() => setCreating(true)}
           type="button"
         >
@@ -2373,7 +2394,7 @@ function Stories({
 
         {activeStories.slice(0, 7).map((story) => (
             <div
-              className="relative h-48 overflow-hidden rounded-2xl bg-[#17211f] text-white"
+              className="nexo-story-card relative overflow-hidden rounded-2xl bg-[#17211f] text-white"
               key={story.id}
             >
             <button

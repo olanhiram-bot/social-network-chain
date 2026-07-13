@@ -1,0 +1,10 @@
+[
+  {
+    "date": "2026-07-13",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "brief": "Correct Nexo navigation hierarchy, feed density, and responsive app shell"
+  }
+]
