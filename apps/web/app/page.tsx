@@ -239,6 +239,7 @@ type Conversation = {
   peerAvatar: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  unreadCount: number;
 };
 
 type DirectMessage = {
@@ -248,6 +249,7 @@ type DirectMessage = {
   signerAddress: string | null;
   messageHash: string | null;
   signature: string | null;
+  readAt: string | null;
   createdAt: string;
   senderId: string;
   senderName: string;
@@ -3469,7 +3471,7 @@ function MessagesPage({
             >
               <Avatar name={conversation.peerName} src={conversation.peerAvatar} size="sm" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-black">{conversation.peerName}</p>
+                <p className="flex items-center gap-2 truncate text-sm font-black">{conversation.peerName}{conversation.unreadCount > 0 && <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#1877f2] text-[10px] text-white">{conversation.unreadCount > 9 ? "9+" : conversation.unreadCount}</span>}</p>
                 <p className="truncate text-xs text-[#6d746f]">{conversation.lastMessage || "No messages yet"}</p>
               </div>
             </button>
@@ -3514,6 +3516,7 @@ function MessagesPage({
                           firmado {message.signerAddress.slice(0, 6)}...{message.signerAddress.slice(-4)}
                         </p>
                       )}
+                      {mine && message.readAt && <p className="mt-1 text-right text-[10px] text-white/60">Seen</p>}
                     </div>
                   </div>
                 );
@@ -3770,6 +3773,13 @@ function MarketplacePage({
   const categories = Array.from(new Set(products.map((product) => product.category))).sort();
   const [creating, setCreating] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<MarketplaceProduct | null>(null);
+  const [category, setCategory] = useState("All");
+  const [query, setQuery] = useState("");
+  const visibleProducts = products.filter((product) => {
+    const matchesCategory = category === "All" || product.category === category;
+    const searchable = `${product.title} ${product.description ?? ""} ${product.location} ${product.sellerName}`.toLowerCase();
+    return matchesCategory && searchable.includes(query.trim().toLowerCase());
+  });
 
   return (
     <section className="space-y-4">
@@ -3800,19 +3810,20 @@ function MarketplacePage({
       <div>
         <div className="space-y-4">
           {categories.length > 0 && (
-            <div className="flex flex-wrap gap-2 rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-              {categories.map((category) => (
-                <span className="rounded-full bg-[#ece7dc] px-3 py-1 text-xs font-black text-[#53645f]" key={category}>
-                  {category}
-                </span>
-              ))}
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+              <input aria-label="Search Marketplace" className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b]" placeholder="Search Marketplace" value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:max-w-[55%] sm:pb-0">
+                {["All", ...categories].map((item) => (
+                  <button className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${category === item ? "bg-[#17211f] text-white" : "bg-[#ece7dc] text-[#53645f] hover:bg-[#ded7c9]"}`} key={item} type="button" onClick={() => setCategory(item)}>{item}</button>
+                ))}
+              </div>
             </div>
           )}
-          {products.length === 0 ? (
-            <EmptyText>There are no products yet.</EmptyText>
+          {visibleProducts.length === 0 ? (
+            <EmptyText>{products.length ? "No products match your search." : "There are no products yet."}</EmptyText>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {products.map((product) => (
+              {visibleProducts.map((product) => (
                 <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={product.id}>
                   <button aria-label={`View ${product.title}`} className="grid aspect-square w-full place-items-center bg-[#17211f] text-sm font-black text-white/60" type="button" onClick={() => setSelectedProduct(product)}>
                     {product.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(product.imageUrl)} /> : "No photo"}

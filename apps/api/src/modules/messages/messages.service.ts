@@ -24,7 +24,9 @@ export class MessagesService {
     return this.prisma.$queryRaw`
       SELECT c."id", c."updatedAt",
              u."id" AS "peerId", u."name" AS "peerName", u."avatar" AS "peerAvatar",
-             lm."content" AS "lastMessage", lm."createdAt" AS "lastMessageAt"
+             lm."content" AS "lastMessage", lm."createdAt" AS "lastMessageAt",
+             (SELECT COUNT(*)::int FROM "DirectMessage" um
+              WHERE um."conversationId" = c."id" AND um."senderId" <> ${userId} AND um."readAt" IS NULL) AS "unreadCount"
       FROM "Conversation" c
       JOIN "ConversationParticipant" me ON me."conversationId" = c."id" AND me."userId" = ${userId}
       JOIN "ConversationParticipant" other ON other."conversationId" = c."id" AND other."userId" <> ${userId}
@@ -78,8 +80,13 @@ export class MessagesService {
     const userId = this.userId(accessToken);
     await this.assertParticipant(conversationId, userId);
 
+    await this.prisma.$executeRaw`
+      UPDATE "DirectMessage" SET "readAt" = NOW()
+      WHERE "conversationId" = ${conversationId} AND "senderId" <> ${userId} AND "readAt" IS NULL
+    `;
+
     return this.prisma.$queryRaw`
-      SELECT m."id", m."conversationId", m."content", m."signerAddress", m."messageHash", m."signature", m."createdAt",
+      SELECT m."id", m."conversationId", m."content", m."signerAddress", m."messageHash", m."signature", m."readAt", m."createdAt",
              u."id" AS "senderId", u."name" AS "senderName", u."avatar" AS "senderAvatar"
       FROM "DirectMessage" m
       JOIN "User" u ON u."id" = m."senderId"
