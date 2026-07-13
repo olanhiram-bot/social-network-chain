@@ -1770,37 +1770,40 @@ export default function Page() {
 
   if (!session) {
     return (
-      <main className="nexo-app nexo-auth grid min-h-screen overflow-hidden">
-        <div className="nexo-auth-shell grid min-h-screen w-full md:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
-          <section className="nexo-auth-hero flex min-h-full flex-col p-8 text-white md:p-16" aria-labelledby="nexo-auth-title">
-            <div className="nexo-auth-brand" aria-label="Nexo"><span>N</span>Nexo</div>
-            <div className="nexo-auth-copy">
-              <p className="nexo-auth-eyebrow"><span />Social, signed, yours</p>
-              <h1 id="nexo-auth-title">Own your social layer.</h1>
-              <p>
+      <main className="nexo-app grid min-h-screen overflow-hidden bg-[#071a32] text-white">
+        <div className="mx-auto grid min-h-screen w-full max-w-[1400px] md:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
+          <section className="flex min-h-full flex-col p-8 md:p-16" aria-labelledby="nexo-auth-title">
+            <div className="inline-flex items-center gap-3 text-lg font-black tracking-tight" aria-label="Nexo">
+              <span className="grid size-9 place-items-center rounded-xl bg-emerald-300 font-mono text-base text-[#071a32]">N</span>
+              Nexo
+            </div>
+            <div className="mt-auto pt-20">
+              <p className="mb-5 flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-[0.12em] text-slate-300"><span className="size-2 rounded-full bg-emerald-300" />Social, signed, yours</p>
+              <h1 id="nexo-auth-title" className="max-w-[9ch] text-6xl font-black leading-[0.9] tracking-[-0.08em] md:text-8xl">Own your social layer.</h1>
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300">
                 Your posts, messages, communities, and identity—connected in one social
                 network built for the onchain internet.
               </p>
             </div>
-            <div className="nexo-auth-orbit" aria-hidden="true">
-              <span className="nexo-auth-orbit-ring" />
-              <span className="nexo-auth-orbit-node nexo-auth-orbit-node-a">POST</span>
-              <span className="nexo-auth-orbit-node nexo-auth-orbit-node-b">CHAT</span>
-              <span className="nexo-auth-orbit-node nexo-auth-orbit-node-c">OWN</span>
-              <span className="nexo-auth-orbit-core">N</span>
+            <div className="relative mx-auto mt-16 hidden aspect-square w-80 md:block" aria-hidden="true">
+              <span className="absolute inset-8 rounded-full border border-slate-500/60" />
+              <span className="absolute left-1/2 top-1/2 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-3xl bg-emerald-300 font-mono text-3xl font-black text-[#071a32]">N</span>
+              <span className="absolute left-8 top-6 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">POST</span>
+              <span className="absolute right-0 top-1/2 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">CHAT</span>
+              <span className="absolute bottom-6 left-14 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">OWN</span>
             </div>
-            <ul className="nexo-auth-capabilities" aria-label="Nexo features">
+            <ul className="mt-10 flex flex-wrap gap-x-7 gap-y-3 font-mono text-xs text-slate-300" aria-label="Nexo features">
               <li>Wallet-ready identity</li>
               <li>Signed interactions</li>
               <li>Social by default</li>
             </ul>
           </section>
 
-          <section className="nexo-auth-access mx-auto flex w-full max-w-lg flex-col self-center rounded-3xl bg-white p-6 text-[#17211f] shadow-2xl md:p-12" aria-labelledby="nexo-auth-access-title">
-            <div className="nexo-auth-access-head">
-              <p>{mode === "login" ? "Welcome back" : "Create your space"}</p>
-              <h2 id="nexo-auth-access-title">{mode === "login" ? "Enter Nexo" : "Join Nexo"}</h2>
-              <span>Use a wallet or email to get started.</span>
+          <section className="mx-auto flex w-full max-w-lg flex-col self-center rounded-3xl bg-slate-50 p-7 text-[#17211f] shadow-2xl md:p-12" aria-labelledby="nexo-auth-access-title">
+            <div className="mb-8">
+              <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-blue-700">{mode === "login" ? "Welcome back" : "Create your space"}</p>
+              <h2 id="nexo-auth-access-title" className="text-4xl font-black tracking-tight">{mode === "login" ? "Enter Nexo" : "Join Nexo"}</h2>
+              <span className="mt-3 block text-sm leading-6 text-slate-600">Use a wallet or email to get started.</span>
             </div>
             <AuthForm
               error={error}
@@ -1810,7 +1813,7 @@ export default function Page() {
               onSubmit={authenticate}
               walletLoading={walletLoading}
             />
-            <p className="nexo-auth-network-note">Wallet actions run on Ethereum Sepolia.</p>
+            <p className="mt-5 text-center font-mono text-xs text-slate-500">Wallet actions run on Ethereum Sepolia.</p>
           </section>
         </div>
       </main>
@@ -5391,7 +5394,7 @@ function AuthForm({
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
         <button
-          className="nexo-auth-wallet"
+          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"
           type="button"
           onClick={() => void appKit.open({ view: "Connect" })}
         >
