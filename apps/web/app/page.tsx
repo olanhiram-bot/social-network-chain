@@ -3268,12 +3268,21 @@ function FriendsPage({
   return (
     <section className="nexo-friends-page space-y-9 p-5 sm:p-8">
       <section id="friend-suggestions">
-        <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="mb-4 flex items-center justify-between gap-4 sm:hidden">
+          <h1 className="text-2xl font-black tracking-tight text-[#17211f]">Friends</h1>
+          <button aria-label="Search friends" className="grid size-10 place-items-center rounded-full bg-[#e4e6eb] text-xl" type="button">⌕</button>
+        </div>
+        <nav className="mb-6 flex gap-2 overflow-x-auto sm:hidden" aria-label="Friends sections">
+          <a className="shrink-0 rounded-full bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#17211f]" href="#friend-requests">Friend requests</a>
+          <a className="shrink-0 rounded-full bg-[#e4e6eb] px-4 py-2 text-sm font-bold text-[#17211f]" href="#my-friends">Your friends</a>
+        </nav>
+        <div className="mb-4 hidden items-center justify-between gap-4 sm:flex">
           <h2 className="text-xl font-black tracking-tight text-[#17211f]">People you may know</h2>
           <button className="text-sm font-bold text-[#1877f2] hover:underline" type="button">See all</button>
         </div>
+        <h2 className="mb-2 text-base font-black text-[#17211f] sm:hidden">People you may know</h2>
         {suggestions.length === 0 ? <EmptyText>No suggestions yet.</EmptyText> : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] gap-3">
+          <div className="grid grid-cols-1 gap-0 sm:grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] sm:gap-3">
             {suggestions.map((user) => <FriendSuggestionCard key={user.id} user={user} onAdd={onAdd} onOpenProfile={onOpenProfile} />)}
           </div>
         )}
@@ -3319,14 +3328,14 @@ function FriendSuggestionCard({ onAdd, onOpenProfile, user }: { onAdd: (userId: 
   if (dismissed) return null;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-sm">
-      <button aria-label={`Open ${user.name}'s profile`} className="block aspect-square w-full overflow-hidden bg-[#eceff3]" type="button" onClick={() => onOpenProfile(user.id)}>
-        {user.avatar ? <img alt="" className="size-full object-cover" src={mediaSrc(user.avatar)} /> : <span className="grid size-full place-items-center"><Avatar name={user.name} size="lg" /></span>}
+    <article className="flex items-center gap-3 border-b border-[#e4e6eb] bg-white py-3 sm:block sm:overflow-hidden sm:rounded-xl sm:border-[#ded7c9] sm:p-0 sm:shadow-sm">
+      <button aria-label={`Open ${user.name}'s profile`} className="size-20 shrink-0 overflow-hidden rounded-full bg-[#eceff3] sm:block sm:aspect-square sm:size-auto sm:w-full sm:rounded-none" type="button" onClick={() => onOpenProfile(user.id)}>
+        {user.avatar ? <img alt="" className="size-full object-cover" src={mediaSrc(user.avatar)} /> : <span className="grid size-full place-items-center bg-[#17211f] text-2xl font-black text-[#f2c166]">{user.name.slice(0, 1).toUpperCase()}</span>}
       </button>
-      <div className="p-3">
+      <div className="min-w-0 flex-1 sm:p-3">
         <button className="block w-full truncate text-left text-base font-black text-[#17211f] hover:underline" type="button" onClick={() => onOpenProfile(user.id)}>{user.name}</button>
-        <p className="mt-1 truncate text-sm text-[#65736f]">Suggested for you</p>
-        <div className="mt-3 grid gap-2">
+        <p className="mt-1 hidden truncate text-sm text-[#65736f] sm:block">Suggested for you</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-1">
           <button className="rounded-lg bg-[#e7f3ff] px-3 py-2 text-sm font-bold text-[#1877f2] hover:bg-[#d8ebff]" type="button" onClick={() => onAdd(user.id)}>Add friend</button>
           <button className="rounded-lg bg-[#e4e6eb] px-3 py-2 text-sm font-bold text-[#17211f] hover:bg-[#d8dade]" type="button" onClick={() => setDismissed(true)}>Remove</button>
         </div>
