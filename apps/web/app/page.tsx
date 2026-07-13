@@ -2498,6 +2498,7 @@ function Composer({
   const finalizingLiveRef = useRef(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const frameUploadBusyRef = useRef(false);
+  const [expanded, setExpanded] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const myLive = lives.find((live) => live.hostId === user.id);
   const myLiveMessages = myLive ? liveMessages[myLive.id] ?? [] : [];
@@ -2666,10 +2667,11 @@ function Composer({
   return (
     <>
       <form
-        className="nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm"
+        className={`nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm ${expanded ? "is-expanded" : ""}`}
         onSubmit={(event) => {
           void onSubmit(event);
           clearMedia();
+          setExpanded(false);
         }}
       >
         <div className="nexo-composer-main">
@@ -2677,10 +2679,22 @@ function Composer({
           <textarea
             className="nexo-composer-prompt"
             name="content"
+            onFocus={() => setExpanded(true)}
             placeholder={`What's on your mind, ${user.name}?`}
           />
+          <div className="nexo-composer-actions">
+            <button aria-label="Add photo" className="nexo-composer-action nexo-composer-photo" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
+              <span aria-hidden="true" />
+            </button>
+            <button aria-label="Add video" className="nexo-composer-action nexo-composer-video" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
+              <span aria-hidden="true" />
+            </button>
+            <button aria-label="Start live" className="nexo-composer-action nexo-composer-live" onClick={() => setLiveOpen(true)} type="button">
+              <span aria-hidden="true" />
+            </button>
+          </div>
         </div>
-        <div className="nexo-composer-fields">
+        {expanded && <div className="nexo-composer-fields">
             <input
               ref={mediaInputRef}
               accept="image/*,video/*"
@@ -2724,33 +2738,12 @@ function Composer({
               <option value="FRIENDS">Friends</option>
               <option value="ONLY_ME">Only me</option>
             </select>
-        </div>
-        <div className="nexo-composer-actions">
-            <button
-              className="nexo-composer-action nexo-composer-photo"
-              type="button"
-              onClick={() => mediaInputRef.current?.click()}
-            >
-              <span aria-hidden="true" />Photo
-            </button>
-            <button
-              className="nexo-composer-action nexo-composer-video"
-              type="button"
-              onClick={() => mediaInputRef.current?.click()}
-            >
-              <span aria-hidden="true" />Video
-            </button>
-            <button
-              className="nexo-composer-action nexo-composer-live"
-              onClick={() => setLiveOpen(true)}
-              type="button"
-            >
-              <span aria-hidden="true" />Live
-            </button>
+        </div>}
+        {expanded && <div className="mt-3 flex justify-end border-t border-[#eee8dc] pt-3">
           <button className={primaryButtonClass} disabled={loading} type="submit">
             {loading ? "Publishing..." : "Post"}
           </button>
-        </div>
+        </div>}
       </form>
 
       {myLive && (

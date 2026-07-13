@@ -161,6 +161,12 @@ textarea:focus-visible {
   gap: var(--space-xs);
 }
 
+.nexo-composer-main > :first-child {
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background-color: var(--surface-muted) !important;
+}
+
 .nexo-composer-prompt {
   min-width: 0;
   min-height: 2.75rem;
@@ -190,22 +196,17 @@ textarea:focus-visible {
 .nexo-composer-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: var(--space-xs);
-  padding-top: var(--space-xs);
-  border-top: 1px solid var(--rule);
+  gap: 0.1rem;
 }
 
 .nexo-composer-action {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.65rem;
+  justify-content: center;
+  padding: 0.45rem;
   border-radius: var(--radius-control);
   color: var(--ink-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -226,10 +227,6 @@ textarea:focus-visible {
 .nexo-composer-live { color: var(--danger); }
 
 .nexo-composer-live span { border-radius: 50%; }
-
-.nexo-composer-actions > :last-child {
-  margin-left: auto;
-}
 
 .nexo-nav-more {
   position: relative;
