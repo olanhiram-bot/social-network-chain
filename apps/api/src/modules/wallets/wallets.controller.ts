@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Headers,
+  NotFoundException,
+  Param,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -29,6 +31,14 @@ export class WalletsController {
   @ApiOperation({ summary: 'List the current user signed actions and their on-chain anchor status' })
   anchors(@Headers('authorization') authorization?: string) {
     return this.onchainActions.listForActor(this.userId(authorization));
+  }
+
+  @Get('actions/:id')
+  @ApiOperation({ summary: 'Get a public hash-only receipt for an anchored action' })
+  async action(@Param('id') id: string) {
+    const receipt = await this.onchainActions.publicReceipt(id);
+    if (!receipt) throw new NotFoundException('Action receipt not found');
+    return receipt;
   }
 
   private userId(authorization?: string) {

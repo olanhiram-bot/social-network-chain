@@ -36,7 +36,7 @@ export class OnchainActionsService {
       const signer = new Wallet(input.privateKey, provider);
       const registry = new Contract(registryAddress, actionRegistryAbi, signer);
       const uri = process.env.SOCIAL_ACTION_PUBLIC_URL
-        ? `${process.env.SOCIAL_ACTION_PUBLIC_URL.replace(/\/$/, '')}/actions/${input.actionId}`
+        ? `${process.env.SOCIAL_ACTION_PUBLIC_URL.replace(/\/$/, '')}/wallet/actions/${input.actionId}`
         : `urn:social-network:action:${input.actionId}`;
       const transaction = await registry.recordAction(
         input.messageHash,
@@ -81,6 +81,30 @@ export class OnchainActionsService {
       ORDER BY a."createdAt" DESC
       LIMIT 100
     `;
+  }
+
+  async publicReceipt(actionId: string) {
+    const [receipt] = await this.prisma.$queryRaw<{
+      actionId: string;
+      actionType: string;
+      resourceType: string;
+      resourceId: string | null;
+      messageHash: string;
+      createdAt: Date;
+      chainId: number | null;
+      registryAddress: string | null;
+      transactionHash: string | null;
+      status: string;
+      updatedAt: Date;
+    }[]>`
+      SELECT a."id" AS "actionId", a."actionType", a."resourceType", a."resourceId", a."messageHash", a."createdAt",
+             c."chainId", c."registryAddress", c."transactionHash", c."status", c."updatedAt"
+      FROM "SignedAction" a
+      JOIN "ChainAnchor" c ON c."signedActionId" = a."id"
+      WHERE a."id" = ${actionId}
+      LIMIT 1
+    `;
+    return receipt ?? null;
   }
 
   private async update(actionId: string, status: string, error?: string) {
