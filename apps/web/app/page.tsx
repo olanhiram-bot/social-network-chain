@@ -1786,7 +1786,7 @@ export default function Page() {
             : view === "home"
               ? "lg:grid-cols-[260px_minmax(0,700px)_330px]"
               : view === "friends"
-                ? "nexo-friends-workbench lg:grid-cols-[360px_minmax(0,1fr)]"
+                ? "nexo-friends-workbench !max-w-none !gap-0 !p-0 lg:grid-cols-[360px_minmax(0,1fr)]"
               : "lg:grid-cols-[260px_minmax(0,1fr)]"
         }`}
       >
@@ -2255,10 +2255,10 @@ function LeftRail({
           <span aria-label="Friend settings" className="grid size-9 place-items-center rounded-full bg-[#ece7dc] text-lg">⚙</span>
         </div>
         <nav className="space-y-1" aria-label="Friends navigation">
-          <a className="nexo-friends-nav-item is-active" href="#friend-suggestions">People you may know</a>
-          <a className="nexo-friends-nav-item" href="#friend-requests">Friend requests</a>
-          <a className="nexo-friends-nav-item" href="#my-friends">All friends</a>
-          <button className="nexo-friends-nav-item" type="button" onClick={() => onNavigate("home")}>Home</button>
+          <a className="block w-full rounded-lg bg-[#eef3ff] px-4 py-3 text-left text-sm font-bold text-[#1877f2]" href="#friend-suggestions">People you may know</a>
+          <a className="block w-full rounded-lg px-4 py-3 text-left text-sm font-semibold text-[#17211f] hover:bg-[#f0f2f5]" href="#friend-requests">Friend requests</a>
+          <a className="block w-full rounded-lg px-4 py-3 text-left text-sm font-semibold text-[#17211f] hover:bg-[#f0f2f5]" href="#my-friends">All friends</a>
+          <button className="block w-full rounded-lg px-4 py-3 text-left text-sm font-semibold text-[#17211f] hover:bg-[#f0f2f5]" type="button" onClick={() => onNavigate("home")}>Home</button>
         </nav>
       </aside>
     );
@@ -3263,7 +3263,7 @@ function FriendsPage({
           <button className="text-sm font-bold text-[#1877f2] hover:underline" type="button">See all</button>
         </div>
         {suggestions.length === 0 ? <EmptyText>No suggestions yet.</EmptyText> : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] gap-3">
             {suggestions.map((user) => <FriendSuggestionCard key={user.id} user={user} onAdd={onAdd} onOpenProfile={onOpenProfile} />)}
           </div>
         )}

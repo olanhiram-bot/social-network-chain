@@ -37,7 +37,7 @@ export class FriendsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: 50,
     });
 
     return users.map((user) => this.publicUser(user));
