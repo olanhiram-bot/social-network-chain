@@ -8,6 +8,9 @@ import { useEffect } from "react";
 import { WagmiProvider } from "wagmi";
 
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (typeof window === "undefined" ? "https://social-network-chain-pycjhipfo-danielolan1s-projects.vercel.app" : window.location.origin);
 const networks = [sepolia] as [typeof sepolia];
 const queryClient = new QueryClient();
 
@@ -29,8 +32,8 @@ createAppKit({
   metadata: {
     name: "Social Network",
     description: "Signer-backed social network",
-    url: "http://localhost:3001",
-    icons: ["http://localhost:3001/favicon.ico"],
+    url: appUrl,
+    icons: [`${appUrl}/favicon.ico`],
   },
   features: {
     analytics: false,

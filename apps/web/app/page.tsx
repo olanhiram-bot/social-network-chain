@@ -1713,7 +1713,11 @@ export default function Page() {
     setFriends([]);
     setRequests([]);
     setWallet(null);
-    void disconnect();
+    try {
+      disconnect();
+    } catch {
+      // The wallet extension can already have disconnected its connector.
+    }
   }
 
   if (!session) {
@@ -2431,6 +2435,7 @@ function Composer({
   const liveStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const finalizingLiveRef = useRef(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const frameUploadBusyRef = useRef(false);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
@@ -2460,7 +2465,9 @@ function Composer({
   }
 
   function stopCamera() {
-    recorderRef.current?.stop();
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+    }
     liveStreamRef.current?.getTracks().forEach((track) => track.stop());
     liveStreamRef.current = null;
     recorderRef.current = null;
@@ -2499,9 +2506,25 @@ function Composer({
   }
 
   async function finishLive(id: string) {
-    const recordingUrl = await stopRecordingAndUpload();
-    await onEndLive(id, recordingUrl);
-    stopCamera();
+    if (finalizingLiveRef.current) {
+      return;
+    }
+
+    finalizingLiveRef.current = true;
+    setCameraError("");
+    try {
+      const recordingUrl = await stopRecordingAndUpload();
+      if (!recordingUrl) {
+        setCameraError("La grabacion no se pudo guardar. El live sigue activo para que puedas intentarlo de nuevo.");
+        return;
+      }
+
+      await onEndLive(id, recordingUrl);
+      stopCamera();
+      setLiveOpen(false);
+    } finally {
+      finalizingLiveRef.current = false;
+    }
   }
 
   const publishFrame = useCallback(async (liveId: string) => {
@@ -2740,7 +2763,9 @@ function Composer({
                     className={secondaryButtonClass}
                     type="button"
                     onClick={() => {
-                      stopCamera();
+                      if (!myLive) {
+                        stopCamera();
+                      }
                       setLiveOpen(false);
                     }}
                   >
