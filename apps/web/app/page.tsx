@@ -418,6 +418,7 @@ export default function Page() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
+  const [messageDraft, setMessageDraft] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     if (typeof window === "undefined") {
@@ -1255,8 +1256,9 @@ export default function Page() {
     }
   }
 
-  async function openConversation(peerId: string) {
+  async function openConversation(peerId: string, draft = "") {
     setError("");
+    setMessageDraft(draft);
     try {
       const { id } = await authed<{ id: string }>("/messages/conversations", {
         method: "POST",
@@ -1295,6 +1297,7 @@ export default function Page() {
       body: JSON.stringify({ content }),
     });
     formElement.reset();
+    setMessageDraft("");
     setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
     setConversations(await authed<Conversation[]>("/messages/conversations"));
   }
@@ -1845,9 +1848,11 @@ export default function Page() {
           <MessagesPage
             activeConversation={activeConversation}
             conversations={conversations}
+            draft={messageDraft}
             friends={friends}
             messages={directMessages}
             viewerId={session.user.id}
+            onDraftChange={setMessageDraft}
             onOpenConversation={openConversation}
             onSelectConversation={selectConversation}
             onSendMessage={sendDirectMessage}
@@ -3347,8 +3352,10 @@ function FriendSuggestionCard({ onAdd, onOpenProfile, user }: { onAdd: (userId: 
 function MessagesPage({
   activeConversation,
   conversations,
+  draft,
   friends,
   messages,
+  onDraftChange,
   onOpenConversation,
   onSelectConversation,
   onSendMessage,
@@ -3356,8 +3363,10 @@ function MessagesPage({
 }: {
   activeConversation: Conversation | null;
   conversations: Conversation[];
+  draft: string;
   friends: User[];
   messages: DirectMessage[];
+  onDraftChange: (draft: string) => void;
   onOpenConversation: (userId: string) => void;
   onSelectConversation: (conversation: Conversation) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
@@ -3436,7 +3445,9 @@ function MessagesPage({
               <input
                 className="min-w-0 flex-1 rounded-full border border-[#ded7c9] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
                 name="content"
+                onChange={(event) => onDraftChange(event.currentTarget.value)}
                 placeholder="Write a message..."
+                value={draft}
               />
               <button className={primaryButtonClass} type="submit">
                 Send
@@ -3672,7 +3683,7 @@ function MarketplacePage({
   viewerId,
 }: {
   loading: boolean;
-  onContactSeller: (sellerId: string) => void;
+  onContactSeller: (sellerId: string, draft?: string) => void;
   onOpenProfile: (userId: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   products: MarketplaceProduct[];
@@ -3739,7 +3750,7 @@ function MarketplacePage({
                       <span className="text-sm font-semibold">{product.sellerName}</span>
                     </button>
                     {product.sellerId !== viewerId && (
-                      <button className={`${primaryButtonClass} mt-4 w-full`} type="button" onClick={() => onContactSeller(product.sellerId)}>
+                      <button className={`${primaryButtonClass} mt-4 w-full`} type="button" onClick={() => onContactSeller(product.sellerId, `Hi, is \"${product.title}\" still available?`)}>
                         Send message
                       </button>
                     )}
@@ -3755,7 +3766,7 @@ function MarketplacePage({
   );
 }
 
-function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, product, viewerId }: { onClose: () => void; onContactSeller: (sellerId: string) => void; onOpenProfile: (userId: string) => void; product: MarketplaceProduct; viewerId: string }) {
+function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, product, viewerId }: { onClose: () => void; onContactSeller: (sellerId: string, draft?: string) => void; onOpenProfile: (userId: string) => void; product: MarketplaceProduct; viewerId: string }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-3 sm:p-6" role="presentation" onMouseDown={onClose}>
       <section aria-modal="true" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl overflow-y-auto rounded-xl bg-white shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
@@ -3781,7 +3792,7 @@ function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, produ
                 <Avatar name={product.sellerName} src={product.sellerAvatar} size="md" />
                 <span className="min-w-0"><span className="block truncate font-bold text-[#050505]">{product.sellerName}</span><span className="block text-sm text-[#65676b]">View profile</span></span>
               </button>
-              {product.sellerId !== viewerId && <button className="mt-4 w-full rounded-lg bg-[#1877f2] px-4 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => { onClose(); onContactSeller(product.sellerId); }}>Message seller</button>}
+              {product.sellerId !== viewerId && <button className="mt-4 w-full rounded-lg bg-[#1877f2] px-4 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => { onClose(); onContactSeller(product.sellerId, `Hi, is \"${product.title}\" still available?`); }}>Message seller</button>}
             </div>
           </aside>
         </div>
