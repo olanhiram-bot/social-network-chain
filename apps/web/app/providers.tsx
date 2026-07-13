@@ -10,7 +10,7 @@ import { WagmiProvider } from "wagmi";
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ??
-  (typeof window === "undefined" ? "https://social-network-chain-pycjhipfo-danielolan1s-projects.vercel.app" : window.location.origin);
+  (typeof window === "undefined" ? "https://social-network-chain-danielolan1s-projects.vercel.app" : window.location.origin);
 const networks = [sepolia] as [typeof sepolia];
 const queryClient = new QueryClient();
 
