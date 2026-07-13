@@ -3504,16 +3504,18 @@ function EventsPage({
   onRsvp: (eventId: string, status: "GOING" | "INTERESTED") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [creating, setCreating] = useState(false);
+
   return (
     <section className="space-y-4">
       <PageHeader
+        action={<button className={primaryButtonClass} type="button" onClick={() => setCreating(true)}>Create event</button>}
         kicker="Events"
         title="Events"
         subtitle="Create personal, page, or group events; invite friends and mark attendance or interest."
       />
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Create event</h2>
+      <CreateModal open={creating} title="Create event" onClose={() => setCreating(false)}>
+        <form className="space-y-3" onSubmit={(event) => { void onSubmit(event); setCreating(false); }}>
           <div className="mt-4 space-y-3">
             <input className={inputClass} name="title" placeholder="Event name" required />
             <input className={inputClass} name="location" placeholder="Location" required />
@@ -3536,6 +3538,8 @@ function EventsPage({
             Create event
           </button>
         </form>
+      </CreateModal>
+      <div>
         {events.length === 0 ? (
           <EmptyText>There are no events yet.</EmptyText>
         ) : (
@@ -3596,17 +3600,18 @@ function MarketplacePage({
   viewerId: string;
 }) {
   const categories = Array.from(new Set(products.map((product) => product.category))).sort();
+  const [creating, setCreating] = useState(false);
 
   return (
     <section className="space-y-4">
       <PageHeader
+        action={<button className={primaryButtonClass} type="button" onClick={() => setCreating(true)}>Sell product</button>}
         kicker="Marketplace"
         title="Marketplace"
         subtitle="List products with a photo, price, category, and location. Contact happens through Messenger in the app."
       />
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Sell product</h2>
+      <CreateModal open={creating} title="Sell product" onClose={() => setCreating(false)}>
+        <form className="space-y-3" onSubmit={(event) => { void onSubmit(event); setCreating(false); }}>
           <div className="mt-4 space-y-3">
             <input className={inputClass} name="title" placeholder="Product" required />
             <input className={inputClass} name="category" placeholder="Category" />
@@ -3622,6 +3627,8 @@ function MarketplacePage({
             Post product
           </button>
         </form>
+      </CreateModal>
+      <div>
         <div className="space-y-4">
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2 rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
@@ -3687,13 +3694,13 @@ function GroupsPage({
   onToggleJoin: (group: SocialGroup) => void;
 }) {
   const myGroupIds = new Set(myGroups.map((group) => group.id));
+  const [creating, setCreating] = useState(false);
 
   return (
     <section className="space-y-4">
-      <PageHeader kicker="Communities" title="Groups" subtitle="Create communities, join groups, and post in them." />
-      <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onCreate}>
-          <h2 className="text-lg font-black">Create group</h2>
+      <PageHeader action={<button className={primaryButtonClass} type="button" onClick={() => setCreating(true)}>Create group</button>} kicker="Communities" title="Groups" subtitle="Create communities, join groups, and post in them." />
+      <CreateModal open={creating} title="Create group" onClose={() => setCreating(false)}>
+        <form className="space-y-3" onSubmit={(event) => { void onCreate(event); setCreating(false); }}>
           <div className="mt-4 space-y-3">
             <input className={inputClass} name="name" placeholder="Group name" required />
             <textarea className="min-h-28 w-full resize-none rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]" name="description" placeholder="Description" />
@@ -3710,8 +3717,8 @@ function GroupsPage({
             Create group
           </button>
         </form>
-
-        <div className="space-y-4">
+      </CreateModal>
+      <div className="space-y-4">
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
             <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Your groups</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -3728,7 +3735,6 @@ function GroupsPage({
               ))}
             </div>
           </section>
-        </div>
       </div>
     </section>
   );
@@ -3867,18 +3873,19 @@ function PagesPage({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const managedPageIds = new Set(myPages.map((page) => page.id));
+  const [creating, setCreating] = useState(false);
 
   return (
     <section className="space-y-4">
       <PageHeader
+        action={<button className={primaryButtonClass} type="button" onClick={() => setCreating(true)}>Create page</button>}
         kicker="Comunidad"
         title="Pages"
         subtitle="Create a presence for brands, creators, businesses, or projects with a cover, photo, and public information."
       />
 
-      <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <form className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-          <h2 className="text-lg font-black">Create page</h2>
+      <CreateModal open={creating} title="Create page" onClose={() => setCreating(false)}>
+        <form className="space-y-3" onSubmit={(event) => { void onSubmit(event); setCreating(false); }}>
           <div className="mt-4 space-y-3">
             <input
               className="w-full rounded-xl border border-[#ded7c9] bg-white px-4 py-3 text-sm outline-none focus:border-[#49625b]"
@@ -3910,8 +3917,9 @@ function PagesPage({
             Create page
           </button>
         </form>
+      </CreateModal>
 
-        <div className="space-y-4">
+      <div className="space-y-4">
           <section className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
             <h2 className="text-sm font-black uppercase tracking-wide text-[#65736f]">Your pages</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -3942,7 +3950,6 @@ function PagesPage({
             </div>
           </section>
         </div>
-      </div>
     </section>
   );
 }
@@ -4252,19 +4259,26 @@ function LivesPage({
 }
 
 function PageHeader({
+  action,
   kicker,
   title,
   subtitle,
 }: {
+  action?: ReactNode;
   kicker: string;
   title: string;
   subtitle: string;
 }) {
   return (
     <header className="rounded-2xl border border-[#ded7c9] bg-white p-6 shadow-sm">
-      <p className="text-xs font-black uppercase tracking-wide text-[#b8741a]">{kicker}</p>
-      <h1 className="mt-1 text-3xl font-black">{title}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-[#6d746f]">{subtitle}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-[#b8741a]">{kicker}</p>
+          <h1 className="mt-1 text-3xl font-black">{title}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-[#6d746f]">{subtitle}</p>
+        </div>
+        {action}
+      </div>
     </header>
   );
 }
@@ -5151,6 +5165,32 @@ function PersonRow({
 
 function EmptyText({ children }: { children: React.ReactNode }) {
   return <p className="px-2 text-sm text-[#6d746f]">{children}</p>;
+}
+
+function CreateModal({
+  children,
+  onClose,
+  open,
+  title,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  open: boolean;
+  title: string;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4" role="presentation" onMouseDown={onClose}>
+      <section aria-labelledby="create-modal-title" aria-modal="true" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between gap-4 border-b border-[#dadde1] pb-3">
+          <h2 className="text-xl font-black text-[#050505]" id="create-modal-title">{title}</h2>
+          <button aria-label="Close" className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={onClose}>×</button>
+        </div>
+        <div className="pt-1">{children}</div>
+      </section>
+    </div>
+  );
 }
 
 function EditContentModal({
