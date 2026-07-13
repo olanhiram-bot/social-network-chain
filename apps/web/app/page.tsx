@@ -2683,14 +2683,14 @@ function Composer({
             placeholder={`What's on your mind, ${user.name}?`}
           />
           <div className="nexo-composer-actions">
-            <button aria-label="Add photo" className="nexo-composer-action nexo-composer-photo" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
-              <span aria-hidden="true" />
-            </button>
             <button aria-label="Add video" className="nexo-composer-action nexo-composer-video" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
-              <span aria-hidden="true" />
+              <ComposerIcon type="video" />
+            </button>
+            <button aria-label="Add photo" className="nexo-composer-action nexo-composer-photo" type="button" onClick={() => { setExpanded(true); mediaInputRef.current?.click(); }}>
+              <ComposerIcon type="photo" />
             </button>
             <button aria-label="Start live" className="nexo-composer-action nexo-composer-live" onClick={() => setLiveOpen(true)} type="button">
-              <span aria-hidden="true" />
+              <ComposerIcon type="feeling" />
             </button>
           </div>
         </div>
@@ -2870,6 +2870,18 @@ function Composer({
       )}
     </>
   );
+}
+
+function ComposerIcon({ type }: { type: "video" | "photo" | "feeling" }) {
+  if (type === "video") {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5v-9Zm14 3.2 3.3-2.1A.45.45 0 0 1 21 9v6a.45.45 0 0 1-.7.4L17 13.3v-2.6Z" /></svg>;
+  }
+
+  if (type === "photo") {
+    return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.5 3h15A2.5 2.5 0 0 1 22 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5v-13A2.5 2.5 0 0 1 4.5 3ZM6 17h12l-3.7-4.5-2.6 3.1-1.8-2.1L6 17Zm2-8.2a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z" /></svg>;
+  }
+
+  return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Zm-3 6.2a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Zm6 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Zm-7 4.5h8a4.2 4.2 0 0 1-8 0Z" /></svg>;
 }
 
 function FeedPost({
