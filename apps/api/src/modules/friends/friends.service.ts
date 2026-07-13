@@ -211,7 +211,7 @@ export class FriendsService {
     });
 
     if (inversePending?.status === FriendRequestStatus.PENDING) {
-      return this.accept(accessToken, inversePending.id);
+      throw new ConflictException('You already have a pending friend request from this person. Accept it from Friend requests.');
     }
 
     try {
@@ -225,7 +225,7 @@ export class FriendsService {
         request.id,
         { addresseeId },
       );
-      await this.notify(addresseeId, 'FRIEND_REQUEST', 'Nueva solicitud de amistad', 'Alguien quiere agregarte como amigo.', 'FriendRequest', request.id);
+      await this.notify(addresseeId, 'FRIEND_REQUEST', 'Friend request', 'You have a new friend request to review.', 'FriendRequest', request.id);
       return request;
     } catch (error) {
       if (
@@ -286,7 +286,7 @@ export class FriendsService {
       requestId,
       { requesterId: request.requesterId },
     );
-    await this.notify(request.requesterId, 'FRIEND_ACCEPTED', 'Solicitud aceptada', 'Ahora son amigos.', 'User', userId);
+    await this.notify(request.requesterId, 'FRIEND_ACCEPTED', 'Friend request accepted', 'You are now friends.', 'User', userId);
 
     return { ok: true };
   }

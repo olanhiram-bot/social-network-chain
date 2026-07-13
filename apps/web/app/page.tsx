@@ -1475,6 +1475,10 @@ export default function Page() {
     try {
       await authed(`/friends/requests/${id}/${action}`, { method: "PATCH" });
       await refreshSocialData();
+      setNotifications((current) => {
+        const notifications = current.notifications.filter((notification) => notification.entityType !== "FriendRequest" || notification.entityId !== id);
+        return { unreadCount: notifications.filter((notification) => !notification.readAt).length, notifications };
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     }
@@ -1772,6 +1776,8 @@ export default function Page() {
         view={view}
         onMarkNotificationsRead={markNotificationsRead}
         onOpenNotification={openNotification}
+        onAcceptFriendRequest={(id) => respondToRequest(id, "accept")}
+        onRejectFriendRequest={(id) => respondToRequest(id, "reject")}
         onNavigate={setView}
         onSearch={runSearch}
         onLogout={logout}
@@ -2084,8 +2090,10 @@ function MobileDock({ view, onNavigate }: { view: AppView; onNavigate: (view: Ap
 
 function TopBar({
   notifications,
+  onAcceptFriendRequest,
   onMarkNotificationsRead,
   onOpenNotification,
+  onRejectFriendRequest,
   user,
   view,
   onNavigate,
@@ -2094,8 +2102,10 @@ function TopBar({
   onProfile,
 }: {
   notifications: NotificationState;
+  onAcceptFriendRequest: (id: string) => void;
   onMarkNotificationsRead: () => void;
   onOpenNotification: (notification: NotificationItem) => void;
+  onRejectFriendRequest: (id: string) => void;
   user: User;
   view: AppView;
   onNavigate: (view: AppView) => void;
@@ -2178,7 +2188,7 @@ function TopBar({
               }
             }}
           >
-            N
+            <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" className="size-5 stroke-current"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
             {notifications.unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
                 {notifications.unreadCount}
@@ -2193,18 +2203,17 @@ function TopBar({
               {notifications.notifications.length === 0 ? (
                 <p className="p-4 text-sm text-[#6d746f]">You have no notifications.</p>
               ) : (
-                notifications.notifications.map((notification) => (
-                  <button
-                    className={`block w-full border-b border-[#f0ece3] p-3 text-left text-sm hover:bg-[#f7f5ef] ${notification.readAt ? "bg-white" : "bg-[#fff8e8]"}`}
-                    key={notification.id}
-                    onClick={() => onOpenNotification(notification)}
-                    type="button"
-                  >
-                    <p className="font-black text-[#17211f]">{notification.title}</p>
-                    <p className="mt-1 text-[#53645f]">{notification.body}</p>
-                    <p className="mt-1 text-[11px] text-[#8a8f8b]">{new Date(notification.createdAt).toLocaleString()}</p>
-                  </button>
-                ))
+                notifications.notifications.map((notification) => {
+                  const requestId = notification.type === "FRIEND_REQUEST" && notification.entityType === "FriendRequest" ? notification.entityId : null;
+                  return <div className={`border-b border-[#f0ece3] p-3 text-left text-sm ${notification.readAt ? "bg-white" : "bg-[#fff8e8]"}`} key={notification.id}>
+                    <button className="block w-full text-left hover:opacity-75" onClick={() => onOpenNotification(notification)} type="button">
+                      <p className="font-black text-[#17211f]">{notification.title}</p>
+                      <p className="mt-1 text-[#53645f]">{notification.body}</p>
+                      <p className="mt-1 text-[11px] text-[#8a8f8b]">{new Date(notification.createdAt).toLocaleString()}</p>
+                    </button>
+                    {requestId && <div className="mt-3 grid grid-cols-2 gap-2"><button className={primaryButtonClass} type="button" onClick={() => onAcceptFriendRequest(requestId)}>Confirm</button><button className={secondaryButtonClass} type="button" onClick={() => onRejectFriendRequest(requestId)}>Delete</button></div>}
+                  </div>;
+                })
               )}
             </div>
           </div>
