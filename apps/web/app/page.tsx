@@ -1770,9 +1770,9 @@ export default function Page() {
 
   if (!session) {
     return (
-      <main className="nexo-app nexo-auth">
-        <div className="nexo-auth-shell">
-          <section className="nexo-auth-hero" aria-labelledby="nexo-auth-title">
+      <main className="nexo-app nexo-auth grid min-h-screen overflow-hidden">
+        <div className="nexo-auth-shell grid min-h-screen w-full md:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
+          <section className="nexo-auth-hero flex min-h-full flex-col p-8 text-white md:p-16" aria-labelledby="nexo-auth-title">
             <div className="nexo-auth-brand" aria-label="Nexo"><span>N</span>Nexo</div>
             <div className="nexo-auth-copy">
               <p className="nexo-auth-eyebrow"><span />Social, signed, yours</p>
@@ -1796,7 +1796,7 @@ export default function Page() {
             </ul>
           </section>
 
-          <section className="nexo-auth-access" aria-labelledby="nexo-auth-access-title">
+          <section className="nexo-auth-access mx-auto flex w-full max-w-lg flex-col self-center rounded-3xl bg-white p-6 text-[#17211f] shadow-2xl md:p-12" aria-labelledby="nexo-auth-access-title">
             <div className="nexo-auth-access-head">
               <p>{mode === "login" ? "Welcome back" : "Create your space"}</p>
               <h2 id="nexo-auth-access-title">{mode === "login" ? "Enter Nexo" : "Join Nexo"}</h2>
