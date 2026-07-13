@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { WalletsController } from './wallets.controller';
+import { OnchainActionsService } from './onchain-actions.service';
 import { SigningService } from './signing.service';
 import { WalletsService } from './wallets.service';
 
@@ -14,7 +15,7 @@ import { WalletsService } from './wallets.service';
     }),
   ],
   controllers: [WalletsController],
-  providers: [WalletsService, SigningService],
+  providers: [WalletsService, SigningService, OnchainActionsService],
   exports: [WalletsService, SigningService],
 })
 export class WalletsModule {}

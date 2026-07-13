@@ -147,15 +147,17 @@ export class PostsService {
             GROUP BY "sharedPostId"
           `,
           viewerId
-            ? this.prisma.$queryRaw<{ postId: string }[]>`
-                SELECT "postId"
+            ? this.prisma.$queryRaw<{ postId: string; reactionType: string }[]>`
+                SELECT "postId", "reactionType"
                 FROM "PostReaction"
                 WHERE "userId" = ${viewerId} AND "postId" = ANY(${postIds})
               `
             : Promise.resolve([]),
         ])
       : [[], [], [], []];
-    const reactedPostIds = new Set(viewerReactions.map((reaction) => reaction.postId));
+    const viewerReactionTypes = new Map<string, string>(
+      viewerReactions.map((reaction) => [reaction.postId, reaction.reactionType] as const),
+    );
 
     return posts.map((post) => ({
       id: post.id,
@@ -199,7 +201,8 @@ export class PostsService {
       ),
       commentCount: comments.filter((comment) => comment.postId === post.id).length,
       shareCount: Number(shareCounts.find((share) => share.sharedPostId === post.id)?.count ?? 0),
-      reactedByMe: reactedPostIds.has(post.id),
+      reactedByMe: viewerReactionTypes.has(post.id),
+      reactionTypeByMe: viewerReactionTypes.get(post.id) ?? null,
       comments: comments
         .filter((comment) => comment.postId === post.id)
         .slice(-3)
@@ -565,20 +568,24 @@ export class PostsService {
     return { deleted: true };
   }
 
-  async react(accessToken: string, postId: string) {
+  async react(accessToken: string, postId: string, reactionType = 'LIKE') {
     const payload = this.verifyAccessToken(accessToken);
+    const cleanReactionType = reactionType.toUpperCase();
+    if (!['LIKE', 'LOVE', 'CARE', 'HAHA', 'WOW', 'SAD', 'ANGRY'].includes(cleanReactionType)) {
+      throw new UnprocessableEntityException('Invalid reaction type');
+    }
     const post = await this.prisma.post.findUnique({ where: { id: postId } });
     if (!post) {
       throw new UnprocessableEntityException('Post not found');
     }
 
-    const existing = await this.prisma.$queryRaw<{ id: string }[]>`
-      SELECT "id" FROM "PostReaction"
+    const existing = await this.prisma.$queryRaw<{ id: string; reactionType: string }[]>`
+      SELECT "id", "reactionType" FROM "PostReaction"
       WHERE "postId" = ${postId} AND "userId" = ${payload.sub}
       LIMIT 1
     `;
 
-    if (existing[0]) {
+    if (existing[0]?.reactionType === cleanReactionType) {
       await this.signing.signAction(payload.sub, 'UNLIKE_POST', 'Post', postId, {});
       await this.prisma.$executeRaw`
         DELETE FROM "PostReaction" WHERE "id" = ${existing[0].id}
@@ -589,26 +596,35 @@ export class PostsService {
 
     const signed = await this.signing.signAction(
       payload.sub,
-      'LIKE_POST',
+      `${cleanReactionType}_POST`,
       'Post',
       postId,
-      { reactionType: 'LIKE' },
+      { reactionType: cleanReactionType },
     );
-    await this.prisma.$executeRaw`
-      INSERT INTO "PostReaction" (
-        "id", "postId", "userId", "reactionType", "signerAddress", "messageHash", "signature"
-      )
-      VALUES (
-        ${randomUUID()}, ${postId}, ${payload.sub}, 'LIKE', ${signed.signerAddress},
-        ${signed.messageHash}, ${signed.signature}
-      )
-    `;
+    if (existing[0]) {
+      await this.prisma.$executeRaw`
+        UPDATE "PostReaction"
+        SET "reactionType" = ${cleanReactionType}, "signerAddress" = ${signed.signerAddress},
+            "messageHash" = ${signed.messageHash}, "signature" = ${signed.signature}, "updatedAt" = NOW()
+        WHERE "id" = ${existing[0].id}
+      `;
+    } else {
+      await this.prisma.$executeRaw`
+        INSERT INTO "PostReaction" (
+          "id", "postId", "userId", "reactionType", "signerAddress", "messageHash", "signature"
+        )
+        VALUES (
+          ${randomUUID()}, ${postId}, ${payload.sub}, ${cleanReactionType}, ${signed.signerAddress},
+          ${signed.messageHash}, ${signed.signature}
+        )
+      `;
+    }
     if (post.authorId !== payload.sub) {
       await this.notify(post.authorId, 'POST_REACTION', 'Nueva reaccion', 'A alguien le gusto tu publicacion.', 'Post', postId);
     }
     this.realtime.publish('feed_updated', { postId });
 
-    return { reacted: true, ...signed };
+    return { reacted: true, reactionType: cleanReactionType, ...signed };
   }
 
   async report(accessToken: string, postId: string, reason: string) {

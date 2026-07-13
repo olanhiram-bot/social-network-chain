@@ -67,6 +67,7 @@ type Post = {
     author: Pick<User, "id" | "name" | "avatar">;
   } | null;
   reactionCount: number;
+  reactionTypeByMe: "LIKE" | "LOVE" | "CARE" | "HAHA" | "WOW" | "SAD" | "ANGRY" | null;
   commentCount: number;
   shareCount: number;
   reactedByMe: boolean;
@@ -271,6 +272,8 @@ type WalletAccount = {
 };
 
 type AppView = "home" | "profile" | "friends" | "lives" | "pages" | "pageDetail" | "groups" | "groupDetail" | "messages" | "publicProfile" | "search" | "marketplace" | "events";
+const APP_VIEWS: readonly AppView[] = ["home", "profile", "friends", "lives", "pages", "pageDetail", "groups", "groupDetail", "messages", "publicProfile", "search", "marketplace", "events"];
+const isAppView = (value: string): value is AppView => APP_VIEWS.includes(value as AppView);
 type EditableTarget =
   | { kind: "post"; id: string; title: string; value: string }
   | { kind: "comment"; id: string; title: string; value: string }
@@ -439,7 +442,11 @@ export default function Page() {
   const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [selectedPage, setSelectedPage] = useState<SocialPage | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<SocialGroup | null>(null);
-  const [view, setView] = useState<AppView>("home");
+  const [view, setView] = useState<AppView>(() => {
+    if (typeof window === "undefined") return "home";
+    const hashView = window.location.hash.slice(1);
+    return isAppView(hashView) ? hashView : "home";
+  });
   const [error, setError] = useState("");
   const [editTarget, setEditTarget] = useState<EditableTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -451,6 +458,21 @@ export default function Page() {
   const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hashView = window.location.hash.slice(1);
+      if (isAppView(hashView)) setView(hashView);
+    };
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
+
+  useEffect(() => {
+    if (window.location.hash !== `#${view}`) {
+      window.history.replaceState(null, "", `#${view}`);
+    }
+  }, [view]);
 
   async function apiFetch(path: string, init: RequestInit = {}) {
     const primaryUrl = `${API_URL}${path}`;
@@ -1487,11 +1509,11 @@ export default function Page() {
     }
   }
 
-  async function toggleReaction(postId: string) {
+  async function toggleReaction(postId: string, reactionType = "LIKE") {
     setError("");
 
     try {
-      await authed(`/posts/${postId}/reactions`, { method: "POST" });
+      await authed(`/posts/${postId}/reactions`, { method: "POST", body: JSON.stringify({ reactionType }) });
       await refreshSocialData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
@@ -2068,28 +2090,66 @@ export default function Page() {
 }
 
 function MobileDock({ view, onNavigate }: { view: AppView; onNavigate: (view: AppView) => void }) {
+  const [moreOpen, setMoreOpen] = useState(false);
   const items: { label: string; view: AppView }[] = [
     { label: "Home", view: "home" },
     { label: "Friends", view: "friends" },
     { label: "Messages", view: "messages" },
-    { label: "Lives", view: "lives" },
-    { label: "Profile", view: "profile" },
+    { label: "Market", view: "marketplace" },
   ];
+  const moreItems: { label: string; view: AppView; description: string }[] = [
+    { label: "Pages", view: "pages", description: "Create and manage public pages" },
+    { label: "Groups", view: "groups", description: "Join and create communities" },
+    { label: "Events", view: "events", description: "Discover what is happening" },
+    { label: "Lives", view: "lives", description: "Watch and start live sessions" },
+    { label: "Profile", view: "profile", description: "Your posts and account" },
+  ];
+  const isMoreActive = moreItems.some((item) => item.view === view);
+
+  function navigate(itemView: AppView) {
+    onNavigate(itemView);
+    setMoreOpen(false);
+  }
 
   return (
-    <nav aria-label="Mobile navigation" className="nexo-mobile-dock">
-      {items.map((item) => (
-        <button
-          aria-current={view === item.view ? "page" : undefined}
-          className={view === item.view ? "is-active" : ""}
-          key={item.view}
-          onClick={() => onNavigate(item.view)}
-          type="button"
-        >
-          {item.label}
-        </button>
-      ))}
-    </nav>
+    <>
+      {moreOpen && (
+        <div className="fixed inset-0 z-30 bg-black/35 px-3 pt-20" role="presentation" onClick={() => setMoreOpen(false)}>
+          <section
+            aria-label="More destinations"
+            className="mx-auto w-full max-w-md rounded-2xl border border-[#ded7c9] bg-white p-3 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between px-2">
+              <h2 className="text-lg font-black text-[#17211f]">More</h2>
+              <button aria-label="Close menu" className="grid size-9 place-items-center rounded-full bg-[#ece7dc] text-lg" type="button" onClick={() => setMoreOpen(false)}>×</button>
+            </div>
+            <div className="grid gap-1">
+              {moreItems.map((item) => (
+                <button className="rounded-xl px-3 py-3 text-left hover:bg-[#f4f0e8]" key={item.view} type="button" onClick={() => navigate(item.view)}>
+                  <span className="block text-sm font-black text-[#17211f]">{item.label}</span>
+                  <span className="mt-0.5 block text-xs text-[#65736f]">{item.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+      <nav aria-label="Mobile navigation" className="nexo-mobile-dock">
+        {items.map((item) => (
+          <button
+            aria-current={view === item.view ? "page" : undefined}
+            className={view === item.view ? "is-active" : ""}
+            key={item.view}
+            onClick={() => navigate(item.view)}
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
+        <button aria-expanded={moreOpen} className={isMoreActive ? "is-active" : ""} type="button" onClick={() => setMoreOpen(true)}>More</button>
+      </nav>
+    </>
   );
 }
 
@@ -2979,14 +3039,25 @@ function FeedPost({
   onDelete: (postId: string) => void;
   onEdit: (post: Post) => void;
   onOpenProfile: (userId: string) => void;
-  onReact: (postId: string) => void;
+  onReact: (postId: string, reactionType?: Post["reactionTypeByMe"] extends null ? never : NonNullable<Post["reactionTypeByMe"]>) => void;
   onReport: (post: Post) => void;
   onShare: (post: Post) => void;
 }) {
   const canManage = post.author.id === viewerId;
   const [commentOpen, setCommentOpen] = useState(false);
+  const [reactionOpen, setReactionOpen] = useState(false);
   const commentLabel = post.commentCount === 1 ? "comment" : "comments";
   const actor = post.page ?? post.author;
+  const reactions: { type: NonNullable<Post["reactionTypeByMe"]>; label: string; symbol: string }[] = [
+    { type: "LIKE", label: "Like", symbol: "👍" },
+    { type: "LOVE", label: "Love", symbol: "❤️" },
+    { type: "CARE", label: "Care", symbol: "🤗" },
+    { type: "HAHA", label: "Haha", symbol: "😆" },
+    { type: "WOW", label: "Wow", symbol: "😮" },
+    { type: "SAD", label: "Sad", symbol: "😢" },
+    { type: "ANGRY", label: "Angry", symbol: "😡" },
+  ];
+  const activeReaction = reactions.find((reaction) => reaction.type === post.reactionTypeByMe);
 
   return (
     <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
@@ -3051,8 +3122,8 @@ function FeedPost({
         </p>
       )}
       <div className="mt-3 flex justify-between border-t border-[#eee8dc] pt-3 text-xs text-[#6d746f]">
-        <span>{post.reactionCount} apoyos</span>
-        <span>{post.shareCount} compartidos</span>
+        <span>{post.reactionCount} reactions</span>
+        <span>{post.shareCount} shares</span>
         <button
           className="font-semibold hover:underline"
           type="button"
@@ -3062,14 +3133,21 @@ function FeedPost({
         </button>
       </div>
       <div className="mt-4 flex border-t border-[#eee8dc] pt-2 text-sm text-[#65736f]">
-        <button
-          className={`flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc] ${
-            post.reactedByMe ? "text-[#b8741a]" : ""
-          }`}
-          onClick={() => onReact(post.id)}
-        >
-          Apoyar
-        </button>
+        <div className="relative flex flex-1">
+          <button
+            className={`min-w-0 flex-1 rounded-l-xl py-2 font-semibold hover:bg-[#ece7dc] ${post.reactedByMe ? "text-[#b8741a]" : ""}`}
+            type="button"
+            onClick={() => onReact(post.id, activeReaction?.type ?? "LIKE")}
+          >
+            {activeReaction ? `${activeReaction.symbol} ${activeReaction.label}` : "Like"}
+          </button>
+          <button aria-expanded={reactionOpen} aria-label="Choose reaction" className="rounded-r-xl px-2 hover:bg-[#ece7dc]" type="button" onClick={() => setReactionOpen((open) => !open)}>⌄</button>
+          {reactionOpen && (
+            <div className="absolute bottom-11 left-0 z-10 flex rounded-full border border-[#ded7c9] bg-white p-1 shadow-xl">
+              {reactions.map((reaction) => <button aria-label={reaction.label} className="grid size-9 place-items-center rounded-full text-lg hover:bg-[#f4efe5]" key={reaction.type} type="button" onClick={() => { onReact(post.id, reaction.type); setReactionOpen(false); }}>{reaction.symbol}</button>)}
+            </div>
+          )}
+        </div>
         <button
           className="flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc]"
           type="button"

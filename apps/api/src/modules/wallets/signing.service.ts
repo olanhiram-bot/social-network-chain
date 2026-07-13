@@ -3,10 +3,14 @@ import { hashMessage, verifyMessage, Wallet as EvmWallet } from 'ethers';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { decryptSecret } from './crypto-box';
+import { OnchainActionsService } from './onchain-actions.service';
 
 @Injectable()
 export class SigningService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private onchainActions: OnchainActionsService,
+  ) {}
 
   async signAction(
     actorId: string,
@@ -45,18 +49,29 @@ export class SigningService {
       signature,
     };
 
+    const actionId = randomUUID();
     await this.prisma.$executeRaw`
       INSERT INTO "SignedAction" (
         "id", "actorId", "actionType", "resourceType", "resourceId", "payload",
         "signerAddress", "messageHash", "signature"
       )
       VALUES (
-        ${randomUUID()}, ${actorId}, ${actionType}, ${resourceType}, ${resourceId},
+        ${actionId}, ${actorId}, ${actionType}, ${resourceType}, ${resourceId},
         ${JSON.stringify(payload)}::jsonb, ${signed.signerAddress}, ${signed.messageHash},
         ${signed.signature}
       )
     `;
 
-    return signed;
+    await this.onchainActions.createPending(actionId);
+    void this.onchainActions.queue({
+      actionId,
+      actionType,
+      messageHash: signed.messageHash,
+      privateKey: decryptSecret(signer.encryptedPrivateKey),
+      resourceId,
+      resourceType,
+    });
+
+    return { ...signed, actionId };
   }
 }

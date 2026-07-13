@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { OnchainActionsService } from './onchain-actions.service';
 import { WalletsService } from './wallets.service';
 
 @ApiTags('wallets')
@@ -14,6 +15,7 @@ import { WalletsService } from './wallets.service';
 export class WalletsController {
   constructor(
     private walletsService: WalletsService,
+    private onchainActions: OnchainActionsService,
     private jwt: JwtService,
   ) {}
 
@@ -21,6 +23,12 @@ export class WalletsController {
   @ApiOperation({ summary: 'Get current user wallet' })
   me(@Headers('authorization') authorization?: string) {
     return this.walletsService.getByUserId(this.userId(authorization));
+  }
+
+  @Get('anchors')
+  @ApiOperation({ summary: 'List the current user signed actions and their on-chain anchor status' })
+  anchors(@Headers('authorization') authorization?: string) {
+    return this.onchainActions.listForActor(this.userId(authorization));
   }
 
   private userId(authorization?: string) {

@@ -50,6 +50,11 @@ class ReportDto {
   reason: string;
 }
 
+class ReactPostDto {
+  @ApiProperty({ example: 'LOVE', enum: ['LIKE', 'LOVE', 'CARE', 'HAHA', 'WOW', 'SAD', 'ANGRY'], required: false })
+  reactionType?: 'LIKE' | 'LOVE' | 'CARE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY';
+}
+
 @ApiTags('posts')
 @Controller('posts')
 export class PostsController {
@@ -152,12 +157,13 @@ export class PostsController {
 
   @Post(':id/reactions')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle like reaction on a post' })
+  @ApiOperation({ summary: 'Toggle or change a reaction on a post' })
   react(
     @Headers('authorization') authorization: string | undefined,
     @Param('id') id: string,
+    @Body() body: ReactPostDto,
   ) {
-    return this.postsService.react(this.bearer(authorization), id);
+    return this.postsService.react(this.bearer(authorization), id, body.reactionType);
   }
 
   @Post(':id/report')
