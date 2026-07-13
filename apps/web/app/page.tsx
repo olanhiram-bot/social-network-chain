@@ -4785,22 +4785,22 @@ function ProfilePage({
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1100px] space-y-4">
-      <div className="overflow-hidden rounded-b-lg bg-white shadow-sm">
-        <div className="relative h-[220px] bg-[#d8dce3] md:h-[360px]">
+    <section className="mx-auto w-full max-w-[1100px] space-y-4 pb-24 sm:pb-0">
+      <div className="overflow-hidden bg-white shadow-sm sm:rounded-b-lg">
+        <div className="relative h-[180px] bg-[#d8dce3] sm:h-[260px] md:h-[360px]">
           {cover ? (
             <img alt="" className="size-full object-cover" src={cover} />
           ) : (
             <div className="size-full bg-gradient-to-b from-[#eef1f5] to-[#9aa5b5]" />
           )}
-          <label className="absolute bottom-4 right-4 cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-bold text-[#1c1e21] shadow hover:bg-[#f0f2f5]">
+          <label className="absolute bottom-3 right-3 cursor-pointer rounded-md bg-white px-3 py-2 text-xs font-bold text-[#1c1e21] shadow hover:bg-[#f0f2f5] sm:bottom-4 sm:right-4 sm:px-4 sm:text-sm">
             Edit cover photo
             <input className="hidden" form="profile-edit-form" name="coverFile" type="file" accept="image/*" onChange={preview(setCoverPreview)} />
           </label>
         </div>
 
         <div className="px-4 pb-0 md:px-8">
-          <div className="-mt-9 flex flex-col gap-3 border-b border-[#dadde1] pb-4 md:-mt-12 md:flex-row md:items-end md:justify-between">
+          <div className="-mt-14 flex flex-col gap-3 border-b border-[#dadde1] pb-4 sm:-mt-12 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col items-center gap-3 text-center md:flex-row md:text-left">
               <div className="relative">
                 <Avatar name={session.user.name} src={avatar} size="lg" />
@@ -4817,31 +4817,31 @@ function ProfilePage({
                 {session.user.bio && <p className="mt-2 max-w-2xl text-[15px] text-[#050505]">{session.user.bio}</p>}
               </div>
             </div>
-            <button className="rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => setEditOpen(true)}>
+            <button className="w-full rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5] md:w-auto" type="button" onClick={() => setEditOpen(true)}>
               Edit profile
             </button>
           </div>
 
-          <nav className="flex gap-1 py-1 text-sm font-bold text-[#65676b]">
-            <button className={`rounded-md px-5 py-3 ${tab === "posts" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("posts")}>
+          <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 py-1 text-sm font-bold text-[#65676b] md:mx-0 md:px-0">
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "posts" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("posts")}>
               Posts
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "photos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("photos")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "photos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("photos")}>
               Photos
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "videos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("videos")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "videos" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("videos")}>
               Videos
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "friends" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("friends")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "friends" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("friends")}>
               Friends
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "pages" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("pages")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "pages" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("pages")}>
               Pages
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "groups" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("groups")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "groups" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("groups")}>
               Groups
             </button>
-            <button className={`rounded-md px-5 py-3 ${tab === "lives" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("lives")}>
+            <button className={`shrink-0 rounded-md px-5 py-3 ${tab === "lives" ? "text-[#1877f2]" : "hover:bg-[#f0f2f5]"}`} type="button" onClick={() => setTab("lives")}>
               Lives
             </button>
           </nav>
@@ -4849,8 +4849,8 @@ function ProfilePage({
       </div>
 
       {editOpen && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/55 px-4">
-          <form id="profile-edit-form" className="w-full max-w-xl rounded-lg bg-white p-4 shadow-2xl" onSubmit={onSubmit}>
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/55 p-4">
+          <form id="profile-edit-form" className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl" onSubmit={onSubmit}>
             <div className="mb-4 flex items-center justify-between border-b border-[#dadde1] pb-3">
               <h2 className="text-xl font-black text-[#050505]">Edit profile</h2>
               <button className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-lg font-black" type="button" onClick={() => setEditOpen(false)}>
