@@ -302,6 +302,7 @@ model Post {
   content       String
   mediaUrl      String?
   mediaType     MediaType?
+  metadata      Json       @default("{}")
   signerAddress String?
   messageHash   String?
   signature     String?

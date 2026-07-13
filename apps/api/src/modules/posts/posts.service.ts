@@ -18,12 +18,14 @@ type AccessPayload = {
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'STREAM';
 type Audience = 'PUBLIC' | 'FRIENDS' | 'ONLY_ME';
+type PostMetadata = { feeling?: string; location?: string };
 
 type PostRow = {
   id: string;
   content: string;
   mediaUrl: string | null;
   mediaType: MediaType | null;
+  metadata: PostMetadata;
   audience: Audience;
   createdAt: Date;
   signerAddress: string | null;
@@ -60,7 +62,7 @@ export class PostsService {
     const viewerId = accessToken ? this.verifyAccessToken(accessToken).sub : undefined;
     const posts = viewerId
       ? await this.prisma.$queryRaw<PostRow[]>`
-        SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."audience", p."createdAt",
+        SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."metadata", p."audience", p."createdAt",
                p."signerAddress", p."messageHash", p."signature",
                u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar",
                pg."id" AS "pageId", pg."name" AS "pageName", pg."avatar" AS "pageAvatar",
@@ -92,7 +94,7 @@ export class PostsService {
         LIMIT 50
       `
       : await this.prisma.$queryRaw<PostRow[]>`
-        SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."audience", p."createdAt",
+        SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."metadata", p."audience", p."createdAt",
                p."signerAddress", p."messageHash", p."signature",
                u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar",
                pg."id" AS "pageId", pg."name" AS "pageName", pg."avatar" AS "pageAvatar",
@@ -164,6 +166,7 @@ export class PostsService {
       content: post.content,
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
+      metadata: post.metadata,
       audience: post.audience,
       createdAt: post.createdAt,
       author: {
@@ -228,6 +231,7 @@ export class PostsService {
     pageId?: string,
     groupId?: string,
     audience?: Audience,
+    metadata?: PostMetadata,
   ) {
     const trimmed = content.trim();
     const url = mediaUrl?.trim() || null;
@@ -251,6 +255,10 @@ export class PostsService {
     const cleanAudience: Audience = ['PUBLIC', 'FRIENDS', 'ONLY_ME'].includes(audience ?? 'PUBLIC') ? audience ?? 'PUBLIC' : 'PUBLIC';
     const cleanPageId = pageId?.trim() || null;
     const cleanGroupId = groupId?.trim() || null;
+    const cleanMetadata = {
+      ...(metadata?.feeling?.trim() ? { feeling: metadata.feeling.trim().slice(0, 80) } : {}),
+      ...(metadata?.location?.trim() ? { location: metadata.location.trim().slice(0, 120) } : {}),
+    };
     if (cleanPageId) {
       const [page] = await this.prisma.$queryRaw<{ id: string; ownerId: string }[]>`
         SELECT "id", "ownerId" FROM "Page" WHERE "id" = ${cleanPageId} LIMIT 1
@@ -291,6 +299,7 @@ export class PostsService {
       pageId: cleanPageId,
       groupId: cleanGroupId,
       audience: cleanAudience,
+      metadata: cleanMetadata,
       signerAddress: signer.address,
     });
     const signature = await new EvmWallet(
@@ -307,11 +316,11 @@ export class PostsService {
 
     await this.prisma.$executeRaw`
       INSERT INTO "Post" (
-        "id", "authorId", "pageId", "groupId", "audience", "content", "mediaUrl", "mediaType", "signerAddress",
+        "id", "authorId", "pageId", "groupId", "audience", "content", "mediaUrl", "mediaType", "metadata", "signerAddress",
         "messageHash", "signature", "updatedAt"
       )
       VALUES (
-        ${id}, ${payload.sub}, ${cleanPageId}, ${cleanGroupId}, ${cleanAudience}, ${trimmed}, ${url}, ${type}::"MediaType",
+        ${id}, ${payload.sub}, ${cleanPageId}, ${cleanGroupId}, ${cleanAudience}, ${trimmed}, ${url}, ${type}::"MediaType", ${JSON.stringify(cleanMetadata)}::jsonb,
         ${signer.address}, ${messageHash}, ${signature}, NOW()
       )
     `;
@@ -322,13 +331,14 @@ export class PostsService {
       pageId: cleanPageId,
       groupId: cleanGroupId,
       audience: cleanAudience,
+      metadata: cleanMetadata,
     });
     if (cleanPageId) {
       await this.notifyPageFollowers(cleanPageId, payload.sub, id, 'Nueva publicacion', trimmed || 'La pagina publico contenido nuevo.');
     }
     this.realtime.publish('feed_updated', { postId: id });
     const [post] = await this.prisma.$queryRaw<PostRow[]>`
-      SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."audience", p."createdAt",
+      SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."metadata", p."audience", p."createdAt",
              p."signerAddress", p."messageHash", p."signature",
              u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar",
              pg."id" AS "pageId", pg."name" AS "pageName", pg."avatar" AS "pageAvatar",
@@ -351,6 +361,7 @@ export class PostsService {
       content: post.content,
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
+      metadata: post.metadata,
       audience: post.audience,
       createdAt: post.createdAt,
       author: {
@@ -387,6 +398,7 @@ export class PostsService {
       commentCount: 0,
       shareCount: 0,
       reactedByMe: false,
+      reactionTypeByMe: null,
       comments: [],
     };
   }
@@ -694,6 +706,7 @@ export class PostsService {
     pageId,
     groupId,
     audience = 'PUBLIC',
+    metadata = {},
     sharedPostId = null,
     signerAddress,
   }: {
@@ -704,6 +717,7 @@ export class PostsService {
     pageId: string | null;
     groupId: string | null;
     audience?: Audience;
+    metadata?: PostMetadata;
     sharedPostId?: string | null;
     signerAddress: string;
   }) {
@@ -717,6 +731,7 @@ export class PostsService {
       pageId,
       groupId,
       audience,
+      metadata,
       sharedPostId,
       signerAddress,
     });

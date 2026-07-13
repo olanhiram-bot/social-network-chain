@@ -43,6 +43,7 @@ type Post = {
   content: string;
   mediaUrl: string | null;
   mediaType: "IMAGE" | "VIDEO" | "STREAM" | null;
+  metadata: { feeling?: string; location?: string };
   audience: "PUBLIC" | "FRIENDS" | "ONLY_ME";
   createdAt: string;
   signerAddress: string | null;
@@ -907,6 +908,8 @@ export default function Page() {
             pageId: String(form.get("pageId") || "") || undefined,
             groupId: String(form.get("groupId") || "") || undefined,
             audience: String(form.get("audience") || "PUBLIC"),
+            feeling: String(form.get("feeling") || "") || undefined,
+            location: String(form.get("location") || "") || undefined,
           }),
         }),
         ...posts,
@@ -2598,6 +2601,10 @@ function Composer({
   const [addOptionsOpen, setAddOptionsOpen] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [postFeeling, setPostFeeling] = useState("");
+  const [postLocation, setPostLocation] = useState("");
+  const [feelingOpen, setFeelingOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   const myLive = lives.find((live) => live.hostId === user.id);
   const myLiveMessages = myLive ? liveMessages[myLive.id] ?? [] : [];
 
@@ -2765,6 +2772,8 @@ function Composer({
   function closeComposer() {
     setExpanded(false);
     setAddOptionsOpen(false);
+    setFeelingOpen(false);
+    setLocationOpen(false);
   }
 
   return (
@@ -2791,6 +2800,8 @@ function Composer({
         void onSubmit(event);
         clearMedia();
         setPostContent("");
+        setPostFeeling("");
+        setPostLocation("");
         closeComposer();
       }}>
         <section aria-modal="true" className="nexo-post-modal-card max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
@@ -2832,14 +2843,18 @@ function Composer({
                 </button>
               </div>
             )}
+            {feelingOpen && <label className="block text-sm font-bold text-[#17211f]">Feeling or activity<select className={`${inputClass} mt-2`} name="feeling" value={postFeeling} onChange={(event) => setPostFeeling(event.currentTarget.value)}><option value="">Choose a feeling</option><option value="Feeling grateful">Feeling grateful</option><option value="Feeling excited">Feeling excited</option><option value="Feeling happy">Feeling happy</option><option value="Celebrating">Celebrating</option><option value="Working">Working</option></select></label>}
+            {locationOpen && <label className="block text-sm font-bold text-[#17211f]">Location<input className={`${inputClass} mt-2`} name="location" placeholder="Where are you?" value={postLocation} onChange={(event) => setPostLocation(event.currentTarget.value)} /></label>}
+            {!feelingOpen && postFeeling && <input name="feeling" type="hidden" value={postFeeling} />}
+            {!locationOpen && postLocation && <input name="location" type="hidden" value={postLocation} />}
             </div>
             <section className="nexo-composer-add-bar">
           <strong>Add to your post</strong>
           <div>
             <button aria-label="Photo or video" className="nexo-composer-photo" type="button" onClick={() => mediaInputRef.current?.click()}><ComposerIcon type="photo" /></button>
             <button aria-label="Tag people" className="nexo-composer-tag" type="button"><ComposerIcon type="tag" /></button>
-            <button aria-label="Feeling or activity" className="nexo-composer-live" type="button"><ComposerIcon type="feeling" /></button>
-            <button aria-label="Location" className="nexo-composer-location" type="button"><ComposerIcon type="location" /></button>
+            <button aria-label="Feeling or activity" className="nexo-composer-live" type="button" onClick={() => setFeelingOpen((open) => !open)}><ComposerIcon type="feeling" /></button>
+            <button aria-label="Location" className="nexo-composer-location" type="button" onClick={() => setLocationOpen((open) => !open)}><ComposerIcon type="location" /></button>
             <button aria-label="GIF" className="nexo-composer-gif" type="button"><ComposerIcon type="gif" /></button>
             <button aria-label="More post options" className="nexo-composer-more" type="button" onClick={() => setAddOptionsOpen(true)}>•••</button>
           </div>
@@ -3106,6 +3121,7 @@ function FeedPost({
         {post.audience === "FRIENDS" ? "Friends" : post.audience === "ONLY_ME" ? "Only me" : "Public"}
       </p>
       <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{post.content}</p>
+      {(post.metadata.feeling || post.metadata.location) && <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[#53645f]">{post.metadata.feeling && <span>😊 {post.metadata.feeling}</span>}{post.metadata.location && <span>📍 {post.metadata.location}</span>}</p>}
       {post.mediaUrl && <PostMedia type={post.mediaType} url={post.mediaUrl} />}
       {post.sharedPost && (
         <div className="mt-4 rounded-xl border border-[#ded7c9] bg-[#fffdf8] p-3">

@@ -25,6 +25,12 @@ class CreatePostDto {
 
   @ApiProperty({ example: 'PUBLIC', enum: ['PUBLIC', 'FRIENDS', 'ONLY_ME'], required: false })
   audience?: 'PUBLIC' | 'FRIENDS' | 'ONLY_ME';
+
+  @ApiProperty({ example: 'Feeling grateful', required: false })
+  feeling?: string;
+
+  @ApiProperty({ example: 'Monterrey, Mexico', required: false })
+  location?: string;
 }
 
 class CreateCommentDto {
@@ -88,6 +94,7 @@ export class PostsController {
       body.pageId,
       body.groupId,
       body.audience,
+      { feeling: body.feeling, location: body.location },
     );
   }
 
