@@ -4786,7 +4786,7 @@ function ProfilePage({
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1100px] space-y-4 pb-24 sm:pb-0">
+    <section className="mx-auto w-full min-w-0 max-w-[1100px] space-y-4 pb-24 sm:pb-0">
       <div className="overflow-hidden bg-white shadow-sm sm:rounded-b-lg">
         <div className="relative h-[180px] bg-[#d8dce3] sm:h-[260px] md:h-[360px]">
           {cover ? (
