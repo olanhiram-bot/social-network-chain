@@ -3257,7 +3257,7 @@ function FriendsPage({
   onReject: (id: string) => void;
 }) {
   return (
-    <section className="nexo-friends-page space-y-9">
+    <section className="nexo-friends-page space-y-9 p-5 sm:p-8">
       <section id="friend-suggestions">
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-xl font-black tracking-tight text-[#17211f]">People you may know</h2>
