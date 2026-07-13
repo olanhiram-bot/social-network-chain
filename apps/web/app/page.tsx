@@ -19,6 +19,7 @@ import {
   useDisconnect,
   useReadContract,
   useSignMessage,
+  useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
@@ -294,6 +295,7 @@ const SESSION_KEY = "social-network-session";
 const SESSION_EVENT = "social-network-session-change";
 const SEARCH_HISTORY_KEY = "social-network-search-history";
 const ZERO_BIGINT = BigInt(0);
+const SEPOLIA_CHAIN_ID = 11155111;
 const EXPLORER_BASE = process.env.NEXT_PUBLIC_CHAIN_EXPLORER_URL ?? "https://sepolia.etherscan.io";
 const optionalAddress = (value: string | undefined) =>
   value && isAddress(value) ? (value as Address) : undefined;
@@ -4703,7 +4705,8 @@ function formatLiveOffset(offsetMs: number) {
 }
 
 function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
   const [txError, setTxError] = useState("");
   const idReady = Boolean(CONTRACTS.idRegistry);
   const keyReady = Boolean(CONTRACTS.keyRegistry);
@@ -4820,6 +4823,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
   }
 
   const busy = isPending || confirming;
+  const wrongChain = Boolean(address && chainId !== SEPOLIA_CHAIN_ID);
   const paidUntilDate =
     paidUntil && paidUntil > ZERO_BIGINT
       ? new Date(Number(paidUntil) * 1000).toLocaleDateString()
@@ -4858,6 +4862,19 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
             Configure the missing Sepolia contracts to enable all onchain actions.
           </p>
         )}
+        {wrongChain && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>Your wallet is connected to a different network. Nexo contracts use Ethereum Sepolia.</p>
+            <button
+              className={`${secondaryButtonClass} mt-2 w-full`}
+              disabled={switchingChain}
+              type="button"
+              onClick={() => void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => setTxError("Switch your wallet to Ethereum Sepolia and try again."))}
+            >
+              {switchingChain ? "Switching..." : "Switch to Sepolia"}
+            </button>
+          </div>
+        )}
         {txError && (
           <p className="rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-semibold text-red-700">
             {txError}
@@ -4866,7 +4883,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
         {!hasSocialId && (
           <button
             className={primaryButtonClass}
-            disabled={!idReady || !address || busy}
+            disabled={!idReady || !address || busy || wrongChain}
             onClick={registerIdentity}
           >
             Register ID
@@ -4874,14 +4891,14 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
         )}
         <button
           className={secondaryButtonClass}
-          disabled={!keyReady || !hasSocialId || !signerKey || Boolean(keyRegistered) || busy}
+          disabled={!keyReady || !hasSocialId || !signerKey || Boolean(keyRegistered) || busy || wrongChain}
           onClick={addAppSigner}
         >
           Register signer
         </button>
         <button
           className={secondaryButtonClass}
-          disabled={!storageReady || !hasSocialId || busy}
+          disabled={!storageReady || !hasSocialId || busy || wrongChain}
           onClick={rentStorage}
         >
           Rentar storage
