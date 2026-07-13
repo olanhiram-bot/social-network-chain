@@ -3680,6 +3680,7 @@ function MarketplacePage({
 }) {
   const categories = Array.from(new Set(products.map((product) => product.category))).sort();
   const [creating, setCreating] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<MarketplaceProduct | null>(null);
 
   return (
     <section className="space-y-4">
@@ -3724,12 +3725,12 @@ function MarketplacePage({
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {products.map((product) => (
                 <article className="overflow-hidden rounded-2xl border border-[#ded7c9] bg-white shadow-sm" key={product.id}>
-                  <div className="grid aspect-square place-items-center bg-[#17211f] text-sm font-black text-white/60">
+                  <button aria-label={`View ${product.title}`} className="grid aspect-square w-full place-items-center bg-[#17211f] text-sm font-black text-white/60" type="button" onClick={() => setSelectedProduct(product)}>
                     {product.imageUrl ? <img alt="" className="size-full object-cover" src={mediaSrc(product.imageUrl)} /> : "No photo"}
-                  </div>
+                  </button>
                   <div className="p-4">
                     <p className="text-xs font-black uppercase text-[#b8741a]">{product.category}</p>
-                    <h2 className="mt-1 text-lg font-black">{product.title}</h2>
+                    <button className="mt-1 block text-left text-lg font-black hover:underline" type="button" onClick={() => setSelectedProduct(product)}>{product.title}</button>
                     <p className="mt-1 text-xl font-black text-[#17211f]">{formatMoney(product.priceCents)}</p>
                     <p className="mt-1 text-sm text-[#6d746f]">{product.location}</p>
                     {product.description && <p className="mt-3 line-clamp-3 text-sm text-[#53645f]">{product.description}</p>}
@@ -3749,7 +3750,43 @@ function MarketplacePage({
           )}
         </div>
       </div>
+      {selectedProduct && <MarketplaceDetailModal product={selectedProduct} viewerId={viewerId} onClose={() => setSelectedProduct(null)} onContactSeller={onContactSeller} onOpenProfile={onOpenProfile} />}
     </section>
+  );
+}
+
+function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, product, viewerId }: { onClose: () => void; onContactSeller: (sellerId: string) => void; onOpenProfile: (userId: string) => void; product: MarketplaceProduct; viewerId: string }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-3 sm:p-6" role="presentation" onMouseDown={onClose}>
+      <section aria-modal="true" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl overflow-y-auto rounded-xl bg-white shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#e4e6eb] bg-white px-4">
+          <p className="truncate text-sm font-bold text-[#65676b]">Marketplace</p>
+          <button aria-label="Close" className="grid size-9 place-items-center rounded-full bg-[#e4e6eb] text-xl font-black text-[#17211f] hover:bg-[#d8dade]" type="button" onClick={onClose}>×</button>
+        </header>
+        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+          <div className="grid min-h-72 place-items-center bg-[#171717] sm:min-h-[32rem]">
+            {product.imageUrl ? <img alt={product.title} className="max-h-[64dvh] w-full object-contain" src={mediaSrc(product.imageUrl)} /> : <span className="text-sm font-bold text-white/60">No photo available</span>}
+          </div>
+          <aside className="min-w-0 divide-y divide-[#e4e6eb]">
+            <div className="p-5">
+              <p className="text-3xl font-black text-[#050505]">{formatMoney(product.priceCents)}</p>
+              <h2 className="mt-2 break-words text-2xl font-bold text-[#050505]">{product.title}</h2>
+              <p className="mt-2 text-sm text-[#65676b]">{product.location}</p>
+              <p className="mt-3 inline-flex rounded-full bg-[#f0f2f5] px-3 py-1 text-xs font-bold text-[#53645f]">{product.category}</p>
+            </div>
+            {product.description && <div className="p-5"><h3 className="text-base font-bold text-[#050505]">Description</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#1c1e21]">{product.description}</p></div>}
+            <div className="p-5">
+              <h3 className="text-base font-bold text-[#050505]">Seller information</h3>
+              <button className="mt-3 flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-[#f0f2f5]" type="button" onClick={() => onOpenProfile(product.sellerId)}>
+                <Avatar name={product.sellerName} src={product.sellerAvatar} size="md" />
+                <span className="min-w-0"><span className="block truncate font-bold text-[#050505]">{product.sellerName}</span><span className="block text-sm text-[#65676b]">View profile</span></span>
+              </button>
+              {product.sellerId !== viewerId && <button className="mt-4 w-full rounded-lg bg-[#1877f2] px-4 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => { onClose(); onContactSeller(product.sellerId); }}>Message seller</button>}
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
   );
 }
 
