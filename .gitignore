@@ -12,3 +12,4 @@ apps/api/package-lock.json
 .env.*.test
 .env.*.production
 .env.*.development
+.vercel
