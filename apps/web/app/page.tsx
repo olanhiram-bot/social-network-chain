@@ -2195,7 +2195,7 @@ function TopBar({
               </span>
             )}
           </summary>
-          <div className="absolute right-0 top-12 z-30 w-80 overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-2xl">
+          <div className="fixed inset-x-3 top-20 z-30 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-xl border border-[#ded7c9] bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:max-h-96 sm:w-80">
             <div className="border-b border-[#eee8dc] p-3">
               <h2 className="text-sm font-black">Notifications</h2>
             </div>
