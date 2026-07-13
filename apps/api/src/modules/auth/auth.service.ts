@@ -10,7 +10,7 @@ import { randomUUID } from 'crypto';
 import { generateNonce, SiweMessage } from 'siwe';
 import { PrismaService } from '../../prisma/prisma.service';
 
-const vercelSiweDomain = /^social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app$/;
+const vercelSiweDomain = /^(?:social-network-chain\.vercel\.app|social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app)$/;
 
 function isAllowedSiweDomain(domain: string) {
   return domain === 'localhost:3001' || domain === process.env.SIWE_DOMAIN || vercelSiweDomain.test(domain);

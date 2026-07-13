@@ -4,7 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 
-const vercelOrigin = /^https:\/\/social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app$/;
+const vercelOrigin = /^https:\/\/(?:social-network-chain\.vercel\.app|social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app)$/;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
