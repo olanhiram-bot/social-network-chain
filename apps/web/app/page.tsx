@@ -2673,42 +2673,13 @@ function Composer({
 
   return (
     <>
-      <form
-        className={`nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm ${expanded ? "is-expanded" : ""}`}
-        onSubmit={(event) => {
-          void onSubmit(event);
-          clearMedia();
-          setPostContent("");
-          closeComposer();
-        }}
-      >
-        {expanded && <header className="nexo-composer-modal-header">
-          <h2>Create post</h2>
-          <button aria-label="Close" type="button" onClick={closeComposer}>×</button>
-        </header>}
+      {!expanded ? <section className="nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
         <div className="nexo-composer-main">
           <Avatar name={user.name} src={user.avatar} size="md" />
-          {expanded && <div className="nexo-composer-identity">
-            <strong>{user.name}</strong>
-            <select aria-label="Audience" name="audience" defaultValue="PUBLIC">
-              <option value="PUBLIC">Public</option>
-              <option value="FRIENDS">Friends</option>
-              <option value="ONLY_ME">Only me</option>
-            </select>
-            {myPages.length > 0 && <select aria-label="Post as" name="pageId">
-              <option value="">Post as {user.name}</option>
-              {myPages.map((page) => <option key={page.id} value={page.id}>{page.name}</option>)}
-            </select>}
-          </div>}
-          <textarea
-            className="nexo-composer-prompt"
-            name="content"
-            onChange={(event) => setPostContent(event.currentTarget.value)}
-            onFocus={() => setExpanded(true)}
-            placeholder={`What's on your mind, ${user.name}?`}
-            value={postContent}
-          />
-          {!expanded && <div className="nexo-composer-actions">
+          <button className="nexo-composer-prompt text-left" type="button" onClick={() => setExpanded(true)}>
+            What&apos;s on your mind, {user.name}?
+          </button>
+          <div className="nexo-composer-actions">
             <button aria-label="Add video" className="nexo-composer-action nexo-composer-video" type="button" onClick={() => setExpanded(true)}>
               <ComposerIcon type="video" />
             </button>
@@ -2718,9 +2689,32 @@ function Composer({
             <button aria-label="Start live" className="nexo-composer-action nexo-composer-live" onClick={() => setLiveOpen(true)} type="button">
               <ComposerIcon type="feeling" />
             </button>
-          </div>}
+          </div>
         </div>
-        {expanded && <div className="nexo-composer-fields">
+      </section> : <form className="fixed inset-0 z-50 grid place-items-start bg-black/55 p-4 sm:place-items-center" onSubmit={(event) => {
+        void onSubmit(event);
+        clearMedia();
+        setPostContent("");
+        closeComposer();
+      }}>
+        <section aria-modal="true" className="nexo-post-modal-card max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
+          <header className="nexo-composer-modal-header">
+            <h2>Create post</h2>
+            <button aria-label="Close" type="button" onClick={closeComposer}>×</button>
+          </header>
+          <div className="nexo-post-modal-body">
+            <div className="nexo-composer-main">
+              <Avatar name={user.name} src={user.avatar} size="md" />
+              <div className="nexo-composer-identity">
+                <strong>{user.name}</strong>
+                <select aria-label="Audience" name="audience" defaultValue="PUBLIC">
+                  <option value="PUBLIC">Public</option><option value="FRIENDS">Friends</option><option value="ONLY_ME">Only me</option>
+                </select>
+                {myPages.length > 0 && <select aria-label="Post as" name="pageId"><option value="">Post as {user.name}</option>{myPages.map((page) => <option key={page.id} value={page.id}>{page.name}</option>)}</select>}
+              </div>
+            </div>
+            <textarea autoFocus className="nexo-post-modal-text" name="content" onChange={(event) => setPostContent(event.currentTarget.value)} placeholder={`What's on your mind, ${user.name}?`} value={postContent} />
+            <div className="nexo-composer-fields">
             <input
               ref={mediaInputRef}
               accept="image/*,video/*"
@@ -2742,8 +2736,8 @@ function Composer({
                 </button>
               </div>
             )}
-        </div>}
-        {expanded && <section className="nexo-composer-add-bar">
+            </div>
+            <section className="nexo-composer-add-bar">
           <strong>Add to your post</strong>
           <div>
             <button aria-label="Photo or video" className="nexo-composer-photo" type="button" onClick={() => mediaInputRef.current?.click()}><ComposerIcon type="photo" /></button>
@@ -2753,14 +2747,16 @@ function Composer({
             <button aria-label="GIF" className="nexo-composer-gif" type="button"><ComposerIcon type="gif" /></button>
             <button aria-label="More post options" className="nexo-composer-more" type="button" onClick={() => setAddOptionsOpen(true)}>•••</button>
           </div>
-        </section>}
-        {expanded && <div className="nexo-composer-submit">
+            </section>
+            <div className="nexo-composer-submit">
           <button disabled={loading || !postContent.trim()} type="submit">
             {loading ? "Publishing..." : "Post"}
           </button>
-        </div>}
-        {expanded && addOptionsOpen && <ComposerAddOptions onBack={() => setAddOptionsOpen(false)} onLive={() => { closeComposer(); setLiveOpen(true); }} onPhoto={() => { setAddOptionsOpen(false); mediaInputRef.current?.click(); }} />}
-      </form>
+            </div>
+          </div>
+          {addOptionsOpen && <ComposerAddOptions onBack={() => setAddOptionsOpen(false)} onLive={() => { closeComposer(); setLiveOpen(true); }} onPhoto={() => { setAddOptionsOpen(false); mediaInputRef.current?.click(); }} />}
+        </section>
+      </form>}
 
       {myLive && (
         <section className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
