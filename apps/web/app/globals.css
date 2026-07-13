@@ -151,6 +151,86 @@ textarea:focus-visible {
   height: 11rem;
 }
 
+.nexo-composer {
+  padding: var(--space-sm);
+}
+
+.nexo-composer-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.nexo-composer-prompt {
+  min-width: 0;
+  min-height: 2.75rem;
+  flex: 1;
+  resize: vertical;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  padding: 0.7rem 1rem;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  line-height: 1.25;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.nexo-composer-prompt:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+.nexo-composer-fields {
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.nexo-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--rule);
+}
+
+.nexo-composer-action {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nexo-composer-action:hover {
+  background: var(--surface-muted);
+}
+
+.nexo-composer-action span {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+}
+
+.nexo-composer-photo { color: var(--media-photo); }
+.nexo-composer-video { color: var(--media-video); }
+.nexo-composer-live { color: var(--danger); }
+
+.nexo-composer-live span { border-radius: 50%; }
+
+.nexo-composer-actions > :last-child {
+  margin-left: auto;
+}
+
 .nexo-nav-more {
   position: relative;
 }

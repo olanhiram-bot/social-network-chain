@@ -2666,20 +2666,21 @@ function Composer({
   return (
     <>
       <form
-        className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm"
+        className="nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm"
         onSubmit={(event) => {
           void onSubmit(event);
           clearMedia();
         }}
       >
-        <div className="flex gap-3">
+        <div className="nexo-composer-main">
           <Avatar name={user.name} src={user.avatar} size="md" />
-          <div className="grid flex-1 gap-3">
-            <textarea
-              className="min-h-24 resize-none rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-3 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
-              name="content"
-              placeholder={`What's on your mind, ${user.name}?`}
-            />
+          <textarea
+            className="nexo-composer-prompt"
+            name="content"
+            placeholder={`What's on your mind, ${user.name}?`}
+          />
+        </div>
+        <div className="nexo-composer-fields">
             <input
               ref={mediaInputRef}
               accept="image/*,video/*"
@@ -2697,7 +2698,7 @@ function Composer({
                   </p>
                 </div>
                 <button className="rounded-lg bg-[#ece7dc] px-3 py-1.5 text-xs font-bold hover:bg-[#ded7c9]" type="button" onClick={clearMedia}>
-                  Quitar
+                  Remove
                 </button>
               </div>
             )}
@@ -2723,32 +2724,29 @@ function Composer({
               <option value="FRIENDS">Friends</option>
               <option value="ONLY_ME">Only me</option>
             </select>
-          </div>
         </div>
-        <div className="mt-3 flex items-center justify-between border-t border-[#eee8dc] pt-3">
-          <div className="flex gap-2 text-xs font-bold text-[#65736f]">
+        <div className="nexo-composer-actions">
             <button
-              className="rounded-xl bg-[#f4efe5] px-3 py-2 hover:bg-[#ece7dc]"
+              className="nexo-composer-action nexo-composer-photo"
               type="button"
               onClick={() => mediaInputRef.current?.click()}
             >
-              Photo
+              <span aria-hidden="true" />Photo
             </button>
             <button
-              className="rounded-xl bg-[#f4efe5] px-3 py-2 hover:bg-[#ece7dc]"
+              className="nexo-composer-action nexo-composer-video"
               type="button"
               onClick={() => mediaInputRef.current?.click()}
             >
-              Video
+              <span aria-hidden="true" />Video
             </button>
             <button
-              className="rounded-xl bg-red-50 px-3 py-2 text-red-700 hover:bg-red-100"
+              className="nexo-composer-action nexo-composer-live"
               onClick={() => setLiveOpen(true)}
               type="button"
             >
-              Live
+              <span aria-hidden="true" />Live
             </button>
-          </div>
           <button className={primaryButtonClass} disabled={loading} type="submit">
             {loading ? "Publishing..." : "Post"}
           </button>
