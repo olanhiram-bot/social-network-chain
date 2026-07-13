@@ -4776,6 +4776,7 @@ function ProfilePage({
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const cover = coverPreview || (session.user.cover ? mediaSrc(session.user.cover) : "");
   const avatar = avatarPreview || session.user.avatar;
+  const profileName = session.user.name.startsWith("0x") ? `${session.user.name.slice(0, 6)}...${session.user.name.slice(-4)}` : session.user.name;
 
   function preview(setter: (value: string | null) => void) {
     return (event: ChangeEvent<HTMLInputElement>) => {
@@ -4800,8 +4801,8 @@ function ProfilePage({
         </div>
 
         <div className="px-4 pb-0 md:px-8">
-          <div className="-mt-14 flex flex-col gap-3 border-b border-[#dadde1] pb-4 sm:-mt-12 md:flex-row md:items-end md:justify-between">
-            <div className="flex flex-col items-center gap-3 text-center md:flex-row md:text-left">
+          <div className="-mt-14 flex w-full min-w-0 flex-col gap-3 border-b border-[#dadde1] pb-4 sm:-mt-12 md:flex-row md:items-end md:justify-between">
+            <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center md:flex-row md:text-left">
               <div className="relative">
                 <Avatar name={session.user.name} src={avatar} size="lg" />
                 <label className="absolute bottom-2 right-2 grid size-9 cursor-pointer place-items-center rounded-full bg-[#e4e6eb] text-lg font-black text-[#1c1e21] shadow hover:bg-[#d8dadf]">
@@ -4809,12 +4810,12 @@ function ProfilePage({
                   <input className="hidden" form="profile-edit-form" name="avatarFile" type="file" accept="image/*" onChange={preview(setAvatarPreview)} />
                 </label>
               </div>
-              <div className="pb-2">
-                <h1 className="text-3xl font-black text-[#050505] md:text-4xl">{session.user.name}</h1>
+              <div className="w-full min-w-0 pb-2">
+                <h1 className="w-full break-words text-3xl font-black text-[#050505] md:text-4xl">{profileName}</h1>
                 <p className="text-sm font-semibold text-[#65676b]">
                   {posts.length} posts · {lives.length} lives
                 </p>
-                {session.user.bio && <p className="mt-2 max-w-2xl text-[15px] text-[#050505]">{session.user.bio}</p>}
+                {session.user.bio && <p className="mt-2 max-w-2xl break-words text-[15px] text-[#050505]">{session.user.bio}</p>}
               </div>
             </div>
             <button className="w-full rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#166fe5] md:w-auto" type="button" onClick={() => setEditOpen(true)}>
