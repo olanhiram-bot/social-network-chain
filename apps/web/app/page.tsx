@@ -1734,7 +1734,7 @@ export default function Page() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-[#f7f5ef] text-[#17211f]">
+      <main className="nexo-app nexo-auth min-h-screen text-[#17211f]">
         <div className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-5 py-8 md:grid-cols-[1fr_420px] md:items-center">
           <section>
             <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#d8d1c3] bg-white/70 px-4 py-2 text-sm font-semibold text-[#49625b]">
@@ -1765,7 +1765,7 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f5ef] text-[#17211f]">
+    <main className="nexo-app text-[#17211f]">
       <TopBar
         notifications={notifications}
         user={session.user}
@@ -1777,9 +1777,10 @@ export default function Page() {
         onLogout={logout}
         onProfile={() => setView("profile")}
       />
+      <MobileDock view={view} onNavigate={setView} />
 
       <div
-        className={`mx-auto grid w-full max-w-[1464px] gap-5 px-4 py-5 ${
+        className={`nexo-workbench mx-auto grid w-full gap-5 px-4 ${
           view === "profile"
             ? "lg:grid-cols-1"
             : view === "home"
@@ -2052,6 +2053,32 @@ export default function Page() {
   );
 }
 
+function MobileDock({ view, onNavigate }: { view: AppView; onNavigate: (view: AppView) => void }) {
+  const items: { label: string; view: AppView }[] = [
+    { label: "Home", view: "home" },
+    { label: "Friends", view: "friends" },
+    { label: "Messages", view: "messages" },
+    { label: "Lives", view: "lives" },
+    { label: "Profile", view: "profile" },
+  ];
+
+  return (
+    <nav aria-label="Mobile navigation" className="nexo-mobile-dock md:hidden">
+      {items.map((item) => (
+        <button
+          aria-current={view === item.view ? "page" : undefined}
+          className={view === item.view ? "is-active" : ""}
+          key={item.view}
+          onClick={() => onNavigate(item.view)}
+          type="button"
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function TopBar({
   notifications,
   onMarkNotificationsRead,
@@ -2074,7 +2101,7 @@ function TopBar({
   onProfile: () => void;
 }) {
   const navItems: { label: string; view: AppView }[] = [
-    { label: "Inicio", view: "home" },
+    { label: "Home", view: "home" },
     { label: "Friends", view: "friends" },
     { label: "Messages", view: "messages" },
     { label: "Pages", view: "pages" },
@@ -2086,7 +2113,7 @@ function TopBar({
   ];
 
   return (
-    <header className="sticky top-0 z-20 h-16 border-b border-[#ded7c9] bg-[#fffdf8]/90 shadow-sm backdrop-blur">
+    <header className="nexo-topbar sticky top-0 z-20 border bg-[#fffdf8]/90 backdrop-blur">
       <div className="mx-auto flex h-full max-w-[1464px] items-center gap-3 px-4">
         <div className="grid size-10 place-items-center rounded-xl bg-[#17211f] text-lg font-black text-[#f2c166]">
           N
@@ -2169,7 +2196,7 @@ function TopBar({
           className="rounded-xl bg-[#17211f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#263532]"
           onClick={onLogout}
         >
-          Salir
+          Sign out
         </button>
       </div>
     </header>
@@ -2186,7 +2213,7 @@ function LeftRail({
   onNavigate: (view: AppView) => void;
 }) {
   const items: { label: string; view: AppView }[] = [
-    { label: "Inicio", view: "home" },
+    { label: "Home", view: "home" },
     { label: "Friends", view: "friends" },
     { label: "Messages", view: "messages" },
     { label: "Pages", view: "pages" },
@@ -2198,7 +2225,7 @@ function LeftRail({
   ];
 
   return (
-    <aside className="sticky top-20 hidden h-[calc(100vh-80px)] space-y-2 overflow-y-auto lg:block">
+    <aside className="nexo-left-rail sticky top-24 hidden h-[calc(100dvh-7rem)] space-y-2 overflow-y-auto lg:block">
       <button
         className="flex w-full items-center gap-3 rounded-xl border border-[#ded7c9] bg-white p-3 text-left font-semibold shadow-sm hover:bg-[#fffaf0]"
         onClick={() => onNavigate("profile")}
