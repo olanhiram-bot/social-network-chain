@@ -3063,6 +3063,8 @@ function FeedPost({
   const canManage = post.author.id === viewerId;
   const [commentOpen, setCommentOpen] = useState(false);
   const [reactionOpen, setReactionOpen] = useState(false);
+  const reactionPressTimer = useRef<number | null>(null);
+  const suppressReactionClick = useRef(false);
   const commentLabel = post.commentCount === 1 ? "comment" : "comments";
   const actor = post.page ?? post.author;
   const reactions: { type: NonNullable<Post["reactionTypeByMe"]>; label: string; symbol: string }[] = [
@@ -3075,6 +3077,22 @@ function FeedPost({
     { type: "ANGRY", label: "Angry", symbol: "😡" },
   ];
   const activeReaction = reactions.find((reaction) => reaction.type === post.reactionTypeByMe);
+
+  function startReactionPress() {
+    suppressReactionClick.current = false;
+    reactionPressTimer.current = window.setTimeout(() => {
+      suppressReactionClick.current = true;
+      setReactionOpen(true);
+      reactionPressTimer.current = null;
+    }, 450);
+  }
+
+  function endReactionPress() {
+    if (reactionPressTimer.current !== null) {
+      window.clearTimeout(reactionPressTimer.current);
+      reactionPressTimer.current = null;
+    }
+  }
 
   return (
     <article className="rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
@@ -3153,13 +3171,28 @@ function FeedPost({
       <div className="mt-4 flex border-t border-[#eee8dc] pt-2 text-sm text-[#65736f]">
         <div className="relative flex flex-1">
           <button
-            className={`min-w-0 flex-1 rounded-l-xl py-2 font-semibold hover:bg-[#ece7dc] ${post.reactedByMe ? "text-[#b8741a]" : ""}`}
+            aria-expanded={reactionOpen}
+            className={`min-w-0 flex-1 rounded-xl py-2 font-semibold hover:bg-[#ece7dc] ${post.reactedByMe ? "text-[#b8741a]" : ""}`}
             type="button"
-            onClick={() => onReact(post.id, activeReaction?.type ?? "LIKE")}
+            onClick={() => {
+              if (suppressReactionClick.current) {
+                suppressReactionClick.current = false;
+                return;
+              }
+              onReact(post.id, activeReaction?.type ?? "LIKE");
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              endReactionPress();
+              setReactionOpen(true);
+            }}
+            onPointerCancel={endReactionPress}
+            onPointerDown={startReactionPress}
+            onPointerLeave={endReactionPress}
+            onPointerUp={endReactionPress}
           >
             {activeReaction ? `${activeReaction.symbol} ${activeReaction.label}` : "Like"}
           </button>
-          <button aria-expanded={reactionOpen} aria-label="Choose reaction" className="rounded-r-xl px-2 hover:bg-[#ece7dc]" type="button" onClick={() => setReactionOpen((open) => !open)}>⌄</button>
           {reactionOpen && (
             <div className="absolute bottom-11 left-0 z-10 flex rounded-full border border-[#ded7c9] bg-white p-1 shadow-xl">
               {reactions.map((reaction) => <button aria-label={reaction.label} className="grid size-9 place-items-center rounded-full text-lg hover:bg-[#f4efe5]" key={reaction.type} type="button" onClick={() => { onReact(post.id, reaction.type); setReactionOpen(false); }}>{reaction.symbol}</button>)}
