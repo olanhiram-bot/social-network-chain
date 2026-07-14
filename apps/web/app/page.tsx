@@ -461,12 +461,13 @@ export default function Page() {
   const [reportTarget, setReportTarget] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [walletOnSepolia, setWalletOnSepolia] = useState(false);
   const walletSyncStarted = useRef(false);
   const walletChainSwitchStarted = useRef(false);
-  const { address, chainId, isConnected } = useAccount();
+  const { address, chainId, connector, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
-  const { switchChainAsync } = useSwitchChain();
+  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -800,28 +801,42 @@ export default function Page() {
     return () => window.clearInterval(id);
   }, [sessionSnapshot]);
 
+  const ensureWalletOnSepolia = useCallback(async () => {
+    if (!connector) {
+      setWalletOnSepolia(false);
+      return false;
+    }
+
+    if (await connector.getChainId() !== SEPOLIA_CHAIN_ID) {
+      await switchChainAsync({ chainId: SEPOLIA_CHAIN_ID });
+    }
+
+    const isOnSepolia = (await connector.getChainId()) === SEPOLIA_CHAIN_ID;
+    setWalletOnSepolia(isOnSepolia);
+    return isOnSepolia;
+  }, [connector, switchChainAsync]);
+
   useEffect(() => {
-    if (!isConnected || chainId === SEPOLIA_CHAIN_ID) {
+    if (!isConnected || !connector) {
       walletChainSwitchStarted.current = false;
       return;
     }
 
-    if (walletChainSwitchStarted.current) {
-      return;
-    }
+    if (walletChainSwitchStarted.current) return;
 
     walletChainSwitchStarted.current = true;
-    void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => {
-      walletChainSwitchStarted.current = false;
-      setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet.");
-    });
-  }, [chainId, isConnected, switchChainAsync]);
+    void ensureWalletOnSepolia()
+      .catch(() => setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet."))
+      .finally(() => {
+        walletChainSwitchStarted.current = false;
+      });
+  }, [chainId, connector, ensureWalletOnSepolia, isConnected]);
 
   useEffect(() => {
     if (
       !isConnected ||
       !address ||
-      chainId !== SEPOLIA_CHAIN_ID ||
+      !walletOnSepolia ||
       session ||
       walletSyncStarted.current
     ) {
@@ -829,7 +844,7 @@ export default function Page() {
     }
 
     const walletAddress = address;
-    const walletChainId = chainId;
+    const walletChainId = SEPOLIA_CHAIN_ID;
     walletSyncStarted.current = true;
     async function syncWalletSession() {
       setWalletLoading(true);
@@ -870,7 +885,7 @@ export default function Page() {
     }
 
     void syncWalletSession();
-  }, [address, chainId, isConnected, session, signMessageAsync]);
+  }, [address, isConnected, session, signMessageAsync, walletOnSepolia]);
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1832,6 +1847,9 @@ export default function Page() {
                   mode={mode}
                   onModeChange={setMode}
                   onSubmit={authenticate}
+                  onSwitchToSepolia={() => void ensureWalletOnSepolia().catch(() => setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet."))}
+                  switchingChain={switchingChain}
+                  wrongChain={isConnected && !walletOnSepolia}
                   walletLoading={walletLoading}
                 />
               </div>
@@ -5398,6 +5416,9 @@ function AuthForm({
   mode,
   onModeChange,
   onSubmit,
+  onSwitchToSepolia,
+  switchingChain,
+  wrongChain,
   walletLoading,
 }: {
   error: string;
@@ -5405,11 +5426,11 @@ function AuthForm({
   mode: "login" | "register";
   onModeChange: (mode: "login" | "register") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSwitchToSepolia: () => void;
+  switchingChain: boolean;
+  wrongChain: boolean;
   walletLoading: boolean;
 }) {
-  const { chainId, isConnected } = useAccount();
-  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
-
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
@@ -5424,12 +5445,12 @@ function AuthForm({
       {walletLoading && (
         <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
       )}
-      {isConnected && chainId !== SEPOLIA_CHAIN_ID && (
+      {wrongChain && (
         <button
           className="w-full whitespace-nowrap rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--accent-strong)] transition-[transform,background-color] duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px hover:bg-[var(--surface-muted)] active:translate-y-0"
           disabled={switchingChain}
           type="button"
-          onClick={() => void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => undefined)}
+          onClick={onSwitchToSepolia}
         >
           {switchingChain ? "Switching to Sepolia..." : "Switch to Ethereum Sepolia"}
         </button>
