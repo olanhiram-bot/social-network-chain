@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* Hallmark · genre: modern-minimal · macrostructure: Marquee Hero · design-system: design.md · designed-as-app
- * theme: Cobalt · auth: social-web3 entry surface · footer: none · enrichment: live network signal
+/* Hallmark · genre: modern-minimal · macrostructure: Letter · design-system: design.md · designed-as-app
+ * theme: Cobalt · auth: minimal social-web3 entry surface · footer: none · enrichment: none
  * pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · slop: pass (42–49)
  */
 @theme inline {

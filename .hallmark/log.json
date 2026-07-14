@@ -2,6 +2,14 @@
   {
     "date": "2026-07-14",
     "scope": "auth",
+    "macrostructure": "Letter",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "brief": "Refine the Nexo entry surface into a professional minimal authentication experience"
+  },
+  {
+    "date": "2026-07-14",
+    "scope": "auth",
     "macrostructure": "Marquee Hero",
     "theme": "Cobalt",
     "enrichment": "animated network signal",
