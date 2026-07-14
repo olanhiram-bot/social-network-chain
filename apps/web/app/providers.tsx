@@ -2,7 +2,7 @@
 
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { sepolia } from "@reown/appkit/networks";
+import { arbitrumSepolia, sepolia } from "@reown/appkit/networks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createStorage, WagmiProvider } from "wagmi";
@@ -11,7 +11,9 @@ const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ??
   (typeof window === "undefined" ? "https://social-network-chain-danielolan1s-projects.vercel.app" : window.location.origin);
-const networks = [sepolia] as [typeof sepolia];
+// Keep Sepolia first as the app default. Arbitrum Sepolia only lets mobile
+// wallets finish connecting when they restore that chain before switching.
+const networks = [sepolia, arbitrumSepolia] as [typeof sepolia, typeof arbitrumSepolia];
 const queryClient = new QueryClient();
 
 if (!projectId) {
