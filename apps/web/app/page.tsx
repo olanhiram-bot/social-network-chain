@@ -297,6 +297,7 @@ const SESSION_EVENT = "social-network-session-change";
 const SEARCH_HISTORY_KEY = "social-network-search-history";
 const ZERO_BIGINT = BigInt(0);
 const SEPOLIA_CHAIN_ID = 11155111;
+const APP_VERSION = process.env.NEXT_PUBLIC_GIT_SHA ?? "b25211f";
 const EXPLORER_BASE = process.env.NEXT_PUBLIC_CHAIN_EXPLORER_URL ?? "https://sepolia.etherscan.io";
 const optionalAddress = (value: string | undefined) =>
   value && isAddress(value) ? (value as Address) : undefined;
@@ -1834,7 +1835,7 @@ export default function Page() {
                   walletLoading={walletLoading}
                 />
               </div>
-              <p className="mt-5 font-mono text-xs text-[var(--auth-muted)]">Wallet actions run on Ethereum Sepolia.</p>
+              <p className="mt-5 font-mono text-xs text-[var(--auth-muted)]">Wallet actions run on Ethereum Sepolia · Build {APP_VERSION}</p>
             </div>
           </section>
         </div>
