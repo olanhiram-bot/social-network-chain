@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   },
   description: "Nexo is an onchain social network for posts, communities, messages, marketplace, events, and live video on Ethereum Sepolia.",
   keywords: ["onchain social network", "Ethereum Sepolia", "Web3 community", "decentralized social", "Nexo"],
-  icons: { icon: nexoLogo.src },
+  icons: {
+    icon: [{ url: nexoLogo.src, type: "image/png", sizes: "1254x1254" }],
+    shortcut: nexoLogo.src,
+    apple: nexoLogo.src,
+  },
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
