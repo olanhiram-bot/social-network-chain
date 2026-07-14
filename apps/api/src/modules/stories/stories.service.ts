@@ -24,12 +24,16 @@ export class StoriesService {
     private signing: SigningService,
   ) {}
 
-  async list() {
+  async list(accessToken: string) {
+    const payload = this.verifyAccessToken(accessToken);
     const now = new Date();
     return this.prisma.$queryRaw`
       SELECT s."id", s."caption", s."mediaUrl", s."mediaType", s."createdAt",
              s."expiresAt", s."signerAddress", s."messageHash", s."signature",
-             u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar"
+             u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar",
+             CASE WHEN s."authorId" = ${payload.sub} THEN (
+               SELECT COUNT(*)::INTEGER FROM "StoryView" v WHERE v."storyId" = s."id"
+             ) ELSE 0 END AS "viewerCount"
       FROM "Story" s
       JOIN "User" u ON u."id" = s."authorId"
       WHERE s."expiresAt" > ${now}
@@ -92,17 +96,49 @@ export class StoriesService {
         authorId: string;
         authorName: string;
         authorAvatar: string | null;
+        viewerCount: number;
       }[]
     >`
       SELECT s."id", s."caption", s."mediaUrl", s."mediaType", s."createdAt",
              s."expiresAt", s."signerAddress", s."messageHash", s."signature",
-             u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar"
+             u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar",
+             0 AS "viewerCount"
       FROM "Story" s
       JOIN "User" u ON u."id" = s."authorId"
       WHERE s."id" = ${id}
     `;
 
     return story;
+  }
+
+  async recordView(accessToken: string, id: string) {
+    const payload = this.verifyAccessToken(accessToken);
+    const [story] = await this.prisma.$queryRaw<{ authorId: string }[]>`
+      SELECT "authorId"
+      FROM "Story"
+      WHERE "id" = ${id} AND "expiresAt" > NOW()
+      LIMIT 1
+    `;
+
+    if (!story) {
+      throw new UnprocessableEntityException('Story not found');
+    }
+
+    if (story.authorId !== payload.sub) {
+      await this.prisma.$executeRaw`
+        INSERT INTO "StoryView" ("id", "storyId", "viewerId")
+        VALUES (${randomUUID()}, ${id}, ${payload.sub})
+        ON CONFLICT ("storyId", "viewerId") DO NOTHING
+      `;
+    }
+
+    const [result] = await this.prisma.$queryRaw<{ viewerCount: number }[]>`
+      SELECT COUNT(*)::INTEGER AS "viewerCount"
+      FROM "StoryView"
+      WHERE "storyId" = ${id}
+    `;
+
+    return { viewers: result?.viewerCount ?? 0 };
   }
 
   async update(accessToken: string, id: string, caption?: string | null) {

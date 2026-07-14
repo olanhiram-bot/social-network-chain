@@ -20,6 +20,7 @@ model User {
   sessions                 Session[]
   posts                    Post[]
   stories                  Story[]
+  storyViews               StoryView[]
   liveSessions             LiveSession[]
   liveChatMessages         LiveChatMessage[]
   conversationParticipants ConversationParticipant[]
@@ -338,10 +339,24 @@ model Story {
   updatedAt     DateTime  @updatedAt
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views  StoryView[]
 
   @@index([authorId])
   @@index([expiresAt])
   @@index([createdAt])
+}
+
+model StoryView {
+  id        String   @id @default(cuid())
+  storyId   String
+  viewerId  String
+  createdAt DateTime @default(now())
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User  @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+  @@index([viewerId])
 }
 
 model LiveSession {

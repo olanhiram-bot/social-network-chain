@@ -24,9 +24,20 @@ export class StoriesController {
   constructor(private storiesService: StoriesService) {}
 
   @Get()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'List active stories' })
-  list() {
-    return this.storiesService.list();
+  list(@Headers('authorization') authorization: string | undefined) {
+    return this.storiesService.list(this.bearer(authorization));
+  }
+
+  @Post(':id/view')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Record one unique viewer for an active story' })
+  view(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.storiesService.recordView(this.bearer(authorization), id);
   }
 
   @Post()

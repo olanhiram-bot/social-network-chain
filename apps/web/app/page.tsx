@@ -94,6 +94,7 @@ type Story = {
   authorId: string;
   authorName: string;
   authorAvatar: string | null;
+  viewerCount: number;
 };
 
 type LiveSession = {
@@ -1001,6 +1002,19 @@ export default function Page() {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function recordStoryView(id: string) {
+    try {
+      const result = await authed<{ viewers: number }>(`/stories/${id}/view`, {
+        method: "POST",
+      });
+      setStories((current) => current.map((story) => (
+        story.id === id ? { ...story, viewerCount: result.viewers } : story
+      )));
+    } catch {
+      // A view must never interrupt story playback when connectivity is unstable.
     }
   }
 
@@ -2059,6 +2073,7 @@ export default function Page() {
               stories={stories}
               user={session.user}
               onSubmit={createStory}
+              onView={recordStoryView}
             />
             <Composer
             lives={lives}
@@ -2430,11 +2445,13 @@ function Stories({
   stories,
   user,
   onSubmit,
+  onView,
 }: {
   loading: boolean;
   stories: Story[];
   user: User;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onView: (id: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [previewStory, setPreviewStory] = useState<Story | null>(null);
@@ -2497,6 +2514,19 @@ function Stories({
 
     setDraftPreview(URL.createObjectURL(file));
     setDraftType(file.type.startsWith("video/") ? "VIDEO" : "IMAGE");
+  }
+
+  function openStory(story: Story) {
+    document.querySelectorAll("details[open]").forEach((element) => {
+      if (element instanceof HTMLDetailsElement) {
+        element.open = false;
+      }
+    });
+    setPreviewStory(story);
+
+    if (story.authorId !== user.id) {
+      onView(story.id);
+    }
   }
 
   return (
@@ -2576,14 +2606,7 @@ function Stories({
             >
             <button
               className="size-full text-left"
-              onClick={() => {
-                document.querySelectorAll("details[open]").forEach((element) => {
-                  if (element instanceof HTMLDetailsElement) {
-                    element.open = false;
-                  }
-                });
-                setPreviewStory(group.stories[0]);
-              }}
+              onClick={() => openStory(group.stories[0])}
               type="button"
             >
               {story.mediaType === "IMAGE" ? (
@@ -2609,7 +2632,7 @@ function Stories({
             <button
               aria-label="Previous story"
               className="absolute left-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:left-8"
-              onClick={() => setPreviewStory(previousPreviewStory)}
+              onClick={() => openStory(previousPreviewStory)}
               type="button"
             >
               ‹
@@ -2642,6 +2665,11 @@ function Stories({
                   <p className="text-xs text-white/70">
                     {new Date(activePreviewStory.createdAt).toLocaleString()}
                   </p>
+                  {activePreviewStory.authorId === user.id && (
+                    <p className="mt-1 text-xs font-bold text-white/90">
+                      {activePreviewStory.viewerCount} {activePreviewStory.viewerCount === 1 ? "view" : "views"}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2655,7 +2683,7 @@ function Stories({
             <button
               aria-label="Next story"
               className="absolute right-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:right-8"
-              onClick={() => setPreviewStory(nextPreviewStory)}
+              onClick={() => openStory(nextPreviewStory)}
               type="button"
             >
               ›
