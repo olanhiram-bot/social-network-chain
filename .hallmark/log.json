@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-07-14",
+    "scope": "auth",
+    "macrostructure": "Marquee Hero",
+    "theme": "Cobalt",
+    "enrichment": "animated network signal",
+    "brief": "Make the Nexo entry experience feel memorable while keeping wallet and email access direct"
+  },
+  {
     "date": "2026-07-13",
     "scope": "auth",
     "macrostructure": "Split Studio",

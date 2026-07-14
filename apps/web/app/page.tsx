@@ -1770,40 +1770,43 @@ export default function Page() {
 
   if (!session) {
     return (
-      <main className="grid min-h-screen overflow-hidden bg-[#071a32] text-white">
-        <div className="mx-auto grid min-h-screen w-full max-w-[1400px] md:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
-          <section className="flex min-h-full flex-col p-8 md:p-16" aria-labelledby="nexo-auth-title">
+      <main className="grid min-h-screen overflow-x-clip bg-[var(--auth-deep)] text-[var(--auth-ink)]">
+        <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[minmax(0,1.18fr)_minmax(26rem,0.82fr)]">
+          <section className="relative isolate flex min-h-[44rem] flex-col overflow-hidden px-7 py-8 sm:px-12 sm:py-12 lg:min-h-screen lg:px-20 lg:py-16" aria-labelledby="nexo-auth-title">
+            <div className="pointer-events-none absolute -left-44 -top-44 -z-10 size-[34rem] rounded-full border border-white/10" aria-hidden="true" />
+            <div className="pointer-events-none absolute -bottom-48 right-[-10rem] -z-10 size-[38rem] rounded-full border border-white/10" aria-hidden="true" />
             <div className="inline-flex items-center gap-3 text-lg font-black tracking-tight" aria-label="Nexo">
-              <span className="grid size-9 place-items-center rounded-xl bg-emerald-300 font-mono text-base text-[#071a32]">N</span>
-              Nexo
+              <span className="grid size-10 place-items-center rounded-xl bg-[var(--auth-signal)] font-mono text-base text-[var(--auth-deep)]">N</span>
+              <span>Nexo</span>
+              <span className="rounded-full border border-white/20 px-2 py-1 font-mono text-[10px] font-bold tracking-[0.14em] text-slate-300">NETWORK</span>
             </div>
-            <div className="mt-auto pt-20">
-              <p className="mb-5 flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-[0.12em] text-slate-300"><span className="size-2 rounded-full bg-emerald-300" />Social, signed, yours</p>
-              <h1 id="nexo-auth-title" className="max-w-[9ch] text-6xl font-black leading-[0.9] tracking-[-0.08em] md:text-8xl">Own your social layer.</h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300">
-                Your posts, messages, communities, and identity—connected in one social
-                network built for the onchain internet.
+            <div className="mt-20 max-w-3xl lg:mt-auto">
+              <h1 id="nexo-auth-title" className="min-w-0 max-w-[8ch] break-words text-6xl font-black leading-[0.88] tracking-[-0.075em] sm:text-7xl lg:text-[clamp(5rem,8vw,8.8rem)]">Social, with proof.</h1>
+              <p className="mt-7 max-w-xl text-base leading-7 text-[var(--auth-muted)] sm:text-lg sm:leading-8">
+                Your identity travels with you. Post, connect, and build communities with
+                interactions that can be verified when they need to be.
               </p>
             </div>
-            <div className="relative mx-auto mt-16 hidden aspect-square w-80 md:block" aria-hidden="true">
-              <span className="absolute inset-8 rounded-full border border-slate-500/60" />
-              <span className="absolute left-1/2 top-1/2 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-3xl bg-emerald-300 font-mono text-3xl font-black text-[#071a32]">N</span>
-              <span className="absolute left-8 top-6 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">POST</span>
-              <span className="absolute right-0 top-1/2 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">CHAT</span>
-              <span className="absolute bottom-6 left-14 rounded-full border border-slate-400 px-3 py-1 font-mono text-[10px] font-bold tracking-wider">OWN</span>
+            <div className="relative mx-auto mt-10 hidden aspect-square w-[min(22rem,30vw)] lg:block" aria-label="Live social network signal">
+              <span className="absolute inset-6 rounded-full border border-white/20 motion-safe:animate-[spin_18s_linear_infinite] motion-reduce:animate-none" />
+              <span className="absolute inset-[4.8rem] rounded-full border border-dashed border-white/20 motion-safe:animate-[spin_24s_linear_infinite_reverse] motion-reduce:animate-none" />
+              <span className="absolute left-1/2 top-1/2 grid size-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[1.7rem] bg-[var(--auth-signal)] font-mono text-4xl font-black text-[var(--auth-deep)] shadow-[0_1.5rem_3rem_color-mix(in_oklab,var(--auth-deep)_70%,transparent)] motion-safe:animate-pulse motion-reduce:animate-none">N</span>
+              <span className="absolute left-3 top-8 rounded-full border border-white/30 bg-[var(--auth-deep-raised)] px-3 py-1 font-mono text-[10px] font-bold tracking-wider">POST</span>
+              <span className="absolute right-0 top-1/2 rounded-full border border-white/30 bg-[var(--auth-deep-raised)] px-3 py-1 font-mono text-[10px] font-bold tracking-wider">CHAT</span>
+              <span className="absolute bottom-5 left-9 rounded-full border border-white/30 bg-[var(--auth-deep-raised)] px-3 py-1 font-mono text-[10px] font-bold tracking-wider">OWN</span>
             </div>
-            <ul className="mt-10 flex flex-wrap gap-x-7 gap-y-3 font-mono text-xs text-slate-300" aria-label="Nexo features">
-              <li>Wallet-ready identity</li>
-              <li>Signed interactions</li>
-              <li>Social by default</li>
+            <ul className="mt-10 flex flex-wrap gap-x-7 gap-y-3 font-mono text-xs text-[var(--auth-muted)]" aria-label="Nexo features">
+              <li className="before:mr-2 before:text-[var(--auth-signal)] before:content-['//']">Wallet-ready identity</li>
+              <li className="before:mr-2 before:text-[var(--auth-signal)] before:content-['//']">Signed interactions</li>
+              <li className="before:mr-2 before:text-[var(--auth-signal)] before:content-['//']">Social by default</li>
             </ul>
           </section>
 
-          <section className="mx-auto flex w-full max-w-lg flex-col self-center rounded-3xl bg-slate-50 p-7 text-[#17211f] shadow-2xl md:p-12" aria-labelledby="nexo-auth-access-title">
+          <section className="mx-auto flex w-full max-w-lg flex-col self-center rounded-[1.5rem] border border-white/50 bg-[var(--auth-panel)] p-7 text-[var(--auth-panel-ink)] shadow-[0_2rem_5rem_color-mix(in_oklab,var(--auth-deep)_48%,transparent)] sm:p-10" aria-labelledby="nexo-auth-access-title">
             <div className="mb-8">
-              <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-blue-700">{mode === "login" ? "Welcome back" : "Create your space"}</p>
-              <h2 id="nexo-auth-access-title" className="text-4xl font-black tracking-tight">{mode === "login" ? "Enter Nexo" : "Join Nexo"}</h2>
-              <span className="mt-3 block text-sm leading-6 text-slate-600">Use a wallet or email to get started.</span>
+              <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-[var(--accent)]">{mode === "login" ? "Welcome back" : "Create your space"}</p>
+              <h2 id="nexo-auth-access-title" className="text-4xl font-black tracking-[-0.04em]">{mode === "login" ? "Enter Nexo" : "Join Nexo"}</h2>
+              <span className="mt-3 block text-sm leading-6 text-[var(--auth-panel-muted)]">Use a wallet or email to get started.</span>
             </div>
             <AuthForm
               error={error}
@@ -1813,7 +1816,7 @@ export default function Page() {
               onSubmit={authenticate}
               walletLoading={walletLoading}
             />
-            <p className="mt-5 text-center font-mono text-xs text-slate-500">Wallet actions run on Ethereum Sepolia.</p>
+            <p className="mt-5 text-center font-mono text-xs text-[var(--auth-panel-muted)]">Wallet actions run on Ethereum Sepolia.</p>
           </section>
         </div>
       </main>
@@ -5394,7 +5397,7 @@ function AuthForm({
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
         <button
-          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"
+          className="w-full whitespace-nowrap rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--color-accent-ink)] transition-[transform,background-color] duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px hover:bg-[var(--accent-strong)] active:translate-y-0"
           type="button"
           onClick={() => void appKit.open({ view: "Connect" })}
         >
@@ -5404,10 +5407,10 @@ function AuthForm({
       {walletLoading && (
         <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
       )}
-      <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[#6d746f]">
-        <span className="h-px flex-1 bg-[#ded7c9]" />
+      <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[var(--auth-panel-muted)]">
+        <span className="h-px flex-1 bg-[var(--rule)]" />
         or
-        <span className="h-px flex-1 bg-[#ded7c9]" />
+        <span className="h-px flex-1 bg-[var(--rule)]" />
       </div>
       {mode === "register" && (
         <input className={inputClass} name="name" placeholder="Name" required />
@@ -5422,12 +5425,12 @@ function AuthForm({
         type="password"
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button className={`${primaryButtonClass} w-full`} disabled={loading}>
+      <button className={`${primaryButtonClass} w-full transition-transform duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px active:translate-y-0`} disabled={loading}>
         {loading ? "Sending..." : mode === "login" ? "Sign in" : "Create account"}
       </button>
-      <div className="border-t border-[#ded7c9] pt-4 text-center">
+      <div className="border-t border-[var(--rule)] pt-4 text-center">
         <button
-          className="rounded-xl bg-[#2f6f62] px-4 py-3 text-sm font-bold text-white hover:bg-[#285f54]"
+          className="whitespace-nowrap rounded-xl bg-[var(--signal)] px-4 py-3 text-sm font-bold text-[var(--auth-deep)] transition-transform duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px active:translate-y-0"
           type="button"
           onClick={() => onModeChange(mode === "login" ? "register" : "login")}
         >
