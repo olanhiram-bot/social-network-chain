@@ -2442,11 +2442,33 @@ function Stories({
   const [draftType, setDraftType] = useState<"IMAGE" | "VIDEO">("IMAGE");
   const [now, setNow] = useState(() => Date.now());
   const activeStories = stories.filter((story) => isActiveStory(story, now));
+  const storyGroups = Array.from(
+    activeStories.reduce((groups, story) => {
+      const group = groups.get(story.authorId) ?? [];
+      group.push(story);
+      groups.set(story.authorId, group);
+      return groups;
+    }, new Map<string, Story[]>()),
+  ).map(([authorId, authorStories]) => ({ authorId, stories: authorStories.reverse() }));
   const activePreviewStory =
     previewStory && isActiveStory(previewStory, now) ? previewStory : null;
-  const activePreviewIndex = activePreviewStory
-    ? activeStories.findIndex((story) => story.id === activePreviewStory.id)
+  const activePreviewGroupIndex = activePreviewStory
+    ? storyGroups.findIndex((group) => group.authorId === activePreviewStory.authorId)
     : -1;
+  const activePreviewGroup = storyGroups[activePreviewGroupIndex];
+  const activePreviewIndex = activePreviewStory && activePreviewGroup
+    ? activePreviewGroup.stories.findIndex((story) => story.id === activePreviewStory.id)
+    : -1;
+  const previousPreviewStory = activePreviewGroup && activePreviewIndex > 0
+    ? activePreviewGroup.stories[activePreviewIndex - 1]
+    : activePreviewGroupIndex > 0
+      ? storyGroups[activePreviewGroupIndex - 1].stories[storyGroups[activePreviewGroupIndex - 1].stories.length - 1]
+      : undefined;
+  const nextPreviewStory = activePreviewGroup && activePreviewIndex < activePreviewGroup.stories.length - 1
+    ? activePreviewGroup.stories[activePreviewIndex + 1]
+    : activePreviewGroupIndex >= 0 && activePreviewGroupIndex < storyGroups.length - 1
+      ? storyGroups[activePreviewGroupIndex + 1].stories[0]
+      : undefined;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -2545,10 +2567,12 @@ function Stories({
           </div>
         </button>
 
-        {activeStories.slice(0, 7).map((story) => (
+        {storyGroups.slice(0, 7).map((group) => {
+          const story = group.stories[group.stories.length - 1];
+          return (
             <div
               className="nexo-story-card relative overflow-hidden rounded-2xl bg-[#17211f] text-white"
-              key={story.id}
+              key={group.authorId}
             >
             <button
               className="size-full text-left"
@@ -2558,7 +2582,7 @@ function Stories({
                     element.open = false;
                   }
                 });
-                setPreviewStory(story);
+                setPreviewStory(group.stories[0]);
               }}
               type="button"
             >
@@ -2571,20 +2595,21 @@ function Stories({
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 pt-12">
                 <p className="text-sm font-bold">{story.authorName}</p>
-                {story.caption && <p className="line-clamp-2 text-xs">{story.caption}</p>}
+                <p className="text-xs">{group.stories.length} {group.stories.length === 1 ? "story" : "stories"}</p>
               </div>
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {activePreviewStory && createPortal(
         <div className="fixed inset-0 z-[100] grid place-items-center bg-[#111816]/90 px-4">
-          {activePreviewIndex > 0 && (
+          {previousPreviewStory && (
             <button
               aria-label="Previous story"
               className="absolute left-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:left-8"
-              onClick={() => setPreviewStory(activeStories[activePreviewIndex - 1])}
+              onClick={() => setPreviewStory(previousPreviewStory)}
               type="button"
             >
               ‹
@@ -2604,7 +2629,12 @@ function Stories({
             ) : (
               <img alt="" className="size-full object-contain" src={mediaSrc(activePreviewStory.mediaUrl)} />
             )}
-            <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-4">
+            <div className="absolute inset-x-0 top-0 flex gap-1 p-2">
+              {activePreviewGroup?.stories.map((story, index) => (
+                <span className={`h-1 flex-1 rounded-full ${index <= activePreviewIndex ? "bg-white" : "bg-white/35"}`} key={story.id} />
+              ))}
+            </div>
+            <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-4 pt-7">
               <div className="flex items-center gap-3 text-white">
                 <Avatar name={activePreviewStory.authorName} src={activePreviewStory.authorAvatar} size="sm" />
                 <div>
@@ -2621,11 +2651,11 @@ function Stories({
               </p>
             )}
           </div>
-          {activePreviewIndex >= 0 && activePreviewIndex < activeStories.length - 1 && (
+          {nextPreviewStory && (
             <button
               aria-label="Next story"
               className="absolute right-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:right-8"
-              onClick={() => setPreviewStory(activeStories[activePreviewIndex + 1])}
+              onClick={() => setPreviewStory(nextPreviewStory)}
               type="button"
             >
               ›
