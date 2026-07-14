@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OnchainActionsService } from './onchain-actions.service';
 import { WalletsService } from './wallets.service';
+import { BadgesService } from './badges.service';
 
 @ApiTags('wallets')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class WalletsController {
     private walletsService: WalletsService,
     private onchainActions: OnchainActionsService,
     private jwt: JwtService,
+    private badges: BadgesService,
   ) {}
 
   @Get('me')
@@ -47,6 +49,15 @@ export class WalletsController {
     const receipt = await this.onchainActions.publicReceipt(id);
     if (!receipt) throw new NotFoundException('Action receipt not found');
     return receipt;
+  }
+
+  @Post('badges')
+  @ApiOperation({ summary: 'Grant or revoke a social badge (moderator only)' })
+  updateBadge(@Headers('authorization') authorization: string | undefined, @Body() body: { socialId: string; badge: string; grant: boolean; uri?: string }) {
+    const [type, token] = authorization?.split(' ') ?? [];
+    if (type !== 'Bearer' || !token) throw new UnauthorizedException('Missing bearer token');
+    const email = this.jwt.verify<{ email: string }>(token).email;
+    return this.badges.update(email, body.socialId, body.badge, body.grant === true, body.uri);
   }
 
   private userId(authorization?: string) {

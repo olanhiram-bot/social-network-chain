@@ -5,6 +5,7 @@ import { WalletsController } from './wallets.controller';
 import { OnchainActionsService } from './onchain-actions.service';
 import { SigningService } from './signing.service';
 import { WalletsService } from './wallets.service';
+import { BadgesService } from './badges.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { WalletsService } from './wallets.service';
     }),
   ],
   controllers: [WalletsController],
-  providers: [WalletsService, SigningService, OnchainActionsService],
+  providers: [WalletsService, SigningService, OnchainActionsService, BadgesService],
   exports: [WalletsService, SigningService],
 })
 export class WalletsModule {}

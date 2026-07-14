@@ -146,6 +146,43 @@
       "artifacts": [
         "SocialActionRegistry"
       ]
+    },
+    "/home/daniel/Documentos/GitHub/social-network/apps/contracts/contracts/SocialBadge.sol": {
+      "lastModificationDate": 1784065615145,
+      "contentHash": "9ba5cd47360be388527c3bccb7e96c57",
+      "sourceName": "contracts/SocialBadge.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "ISocialBadgeIds",
+        "SocialBadge"
+      ]
     }
   }
 }

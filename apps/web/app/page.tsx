@@ -13,11 +13,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Room, RoomEvent, Track } from "livekit-client";
-import { isAddress, padHex, zeroAddress, type Address } from "viem";
+import { isAddress, keccak256, padHex, stringToHex, zeroAddress, type Address } from "viem";
 import {
   useAccount,
   useDisconnect,
   useReadContract,
+  useReadContracts,
   useSignMessage,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -374,7 +375,9 @@ const CONTRACTS = {
   idRegistry: optionalAddress(process.env.NEXT_PUBLIC_ID_REGISTRY_ADDRESS),
   keyRegistry: optionalAddress(process.env.NEXT_PUBLIC_KEY_REGISTRY_ADDRESS),
   storageRegistry: optionalAddress(process.env.NEXT_PUBLIC_STORAGE_REGISTRY_ADDRESS),
+  socialBadge: optionalAddress(process.env.NEXT_PUBLIC_SOCIAL_BADGE_ADDRESS),
 };
+const BADGES = ["EARLY_MEMBER", "VERIFIED_CREATOR", "LIVE_HOST", "TRUSTED_MODERATOR"] as const;
 const idRegistryAbi = [
   {
     type: "function",
@@ -390,6 +393,8 @@ const idRegistryAbi = [
     inputs: [{ name: "recovery", type: "address" }],
     outputs: [{ name: "id", type: "uint256" }],
   },
+  { type: "function", name: "recoveryOf", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [{ name: "", type: "address" }] },
+  { type: "function", name: "changeRecovery", stateMutability: "nonpayable", inputs: [{ name: "id", type: "uint256" }, { name: "recovery", type: "address" }], outputs: [] },
 ] as const;
 const keyRegistryAbi = [
   {
@@ -412,6 +417,7 @@ const keyRegistryAbi = [
     ],
     outputs: [],
   },
+  { type: "function", name: "removeKey", stateMutability: "nonpayable", inputs: [{ name: "id", type: "uint256" }, { name: "key", type: "bytes32" }], outputs: [] },
 ] as const;
 const storageRegistryAbi = [
   {
@@ -436,6 +442,7 @@ const storageRegistryAbi = [
     outputs: [],
   },
 ] as const;
+const socialBadgeAbi = [{ type: "function", name: "hasBadge", stateMutability: "view", inputs: [{ name: "", type: "uint256" }, { name: "", type: "bytes32" }], outputs: [{ name: "", type: "bool" }] }] as const;
 
 function subscribeSession(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -5177,6 +5184,7 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
     query: { enabled: Boolean(idReady && address) },
   });
   const hasSocialId = Boolean(socialId && socialId > ZERO_BIGINT);
+  const { data: recoveryAddress, refetch: refetchRecovery } = useReadContract({ abi: idRegistryAbi, address: CONTRACTS.idRegistry, functionName: "recoveryOf", args: [socialId ?? ZERO_BIGINT], query: { enabled: Boolean(idReady && hasSocialId) } });
   const { data: keyRegistered, refetch: refetchKey } = useReadContract({
     abi: keyRegistryAbi,
     address: CONTRACTS.keyRegistry,
@@ -5184,6 +5192,11 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
     args: [socialId ?? ZERO_BIGINT, signerKey ?? padHex(zeroAddress, { size: 32 })],
     query: { enabled: Boolean(keyReady && hasSocialId && signerKey) },
   });
+  const { data: badgeResults } = useReadContracts({
+    contracts: BADGES.map((badge) => ({ abi: socialBadgeAbi, address: CONTRACTS.socialBadge, functionName: "hasBadge", args: [socialId ?? ZERO_BIGINT, keccak256(stringToHex(badge))] })),
+    query: { enabled: Boolean(CONTRACTS.socialBadge && hasSocialId) },
+  });
+  const badges = BADGES.filter((_, index) => badgeResults?.[index]?.result === true);
   const { data: unitPrice } = useReadContract({
     abi: storageRegistryAbi,
     address: CONTRACTS.storageRegistry,
@@ -5206,9 +5219,10 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
     }
 
     void refetchSocialId();
+    void refetchRecovery();
     void refetchKey();
     void refetchPaidUntil();
-  }, [isSuccess, refetchKey, refetchPaidUntil, refetchSocialId]);
+  }, [isSuccess, refetchKey, refetchPaidUntil, refetchRecovery, refetchSocialId]);
 
   async function registerIdentity() {
     const idRegistry = CONTRACTS.idRegistry;
@@ -5241,6 +5255,19 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
         args: [id, signerKey],
       }),
     );
+  }
+
+  async function revokeAppSigner() {
+    const keyRegistry = CONTRACTS.keyRegistry;
+    if (!keyRegistry || !socialId || !signerKey) return;
+    await runOnchainAction(() => writeContractAsync({ abi: keyRegistryAbi, address: keyRegistry, functionName: "removeKey", args: [socialId, signerKey] }));
+  }
+
+  async function changeRecovery() {
+    const recovery = window.prompt("Recovery wallet address", String(recoveryAddress ?? ""));
+    const idRegistry = CONTRACTS.idRegistry;
+    if (!recovery || !isAddress(recovery) || !idRegistry || !socialId) { if (recovery) setTxError("Enter a valid wallet address."); return; }
+    await runOnchainAction(() => writeContractAsync({ abi: idRegistryAbi, address: idRegistry, functionName: "changeRecovery", args: [socialId, recovery] }));
   }
 
   async function rentStorage() {
@@ -5299,6 +5326,8 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
         <p className="text-xs font-semibold text-[#6d746f]">App signer</p>
         <p className="break-all text-xs">{appSigner ?? "No signer"}</p>
       </div>
+      {hasSocialId && <div><p className="text-xs font-semibold text-[#6d746f]">Recovery wallet</p><p className="break-all text-xs">{String(recoveryAddress ?? "Not configured")}</p></div>}
+      {badges.length > 0 && <div><p className="text-xs font-semibold text-[#6d746f]">Onchain badges</p><p className="text-xs font-bold">{badges.map((badge) => badge.replaceAll("_", " ")).join(" · ")}</p></div>}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <span className="rounded-xl bg-[#f4efe5] p-2">
           ID: {socialIdText}
@@ -5341,6 +5370,8 @@ function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount
         >
           Register signer
         </button>
+        <button className={secondaryButtonClass} disabled={!keyReady || !hasSocialId || !signerKey || !keyRegistered || busy || wrongChain} onClick={revokeAppSigner}>Revoke signer</button>
+        <button className={secondaryButtonClass} disabled={!idReady || !hasSocialId || busy || wrongChain} onClick={changeRecovery}>Change recovery wallet</button>
         <button
           className={secondaryButtonClass}
           disabled={!storageReady || !hasSocialId || busy || wrongChain}

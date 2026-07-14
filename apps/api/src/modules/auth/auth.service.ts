@@ -8,6 +8,7 @@ import type { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { generateNonce, SiweMessage } from 'siwe';
+import { verifyMessage } from 'ethers';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const vercelSiweDomain = /^(?:social-network-chain\.vercel\.app|social-network-chain(?:-[a-z0-9]+)?-danielolan1s-projects\.vercel\.app)$/;
@@ -127,22 +128,22 @@ export class AuthService {
     let siwe: SiweMessage;
     try {
       siwe = new SiweMessage(message);
-      if (!this.siweNonces.delete(siwe.nonce)) {
+      if (!this.siweNonces.has(siwe.nonce)) {
         throw new UnauthorizedException('Invalid SIWE nonce');
       }
       if (!isAllowedSiweDomain(siwe.domain)) {
         throw new UnauthorizedException('Invalid SIWE domain');
       }
 
-      const result = await siwe.verify({
-        signature,
-        domain: siwe.domain,
-      });
-
-      if (!result.success) {
+      // Rabby and MetaMask sign standard EIP-191 messages. Verify locally as
+      // a fallback when the SIWE library cannot resolve a connector/provider.
+      const recovered = verifyMessage(message, signature).toLowerCase();
+      if (recovered !== siwe.address.toLowerCase()) {
         throw new UnauthorizedException('Invalid SIWE signature');
       }
-    } catch {
+      this.siweNonces.delete(siwe.nonce);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid SIWE signature');
     }
 

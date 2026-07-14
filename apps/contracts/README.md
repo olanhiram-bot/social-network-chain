@@ -5,6 +5,7 @@ Minimal Farcaster-style contract layer:
 - `SocialIdRegistry`: assigns a portable social id to one wallet.
 - `SocialKeyRegistry`: registers app signer keys for an id.
 - `SocialStorageRegistry`: tracks paid storage windows.
+- `SocialBadge`: owner-issued, non-transferable profile attestations.
 
 Deploy requires:
 
@@ -28,3 +29,8 @@ SOCIAL_ACTION_PUBLIC_URL=https://your-web-app.example
 The API submits an app-signer transaction after recording each signed action.
 Anchoring failures are tracked off-chain in `ChainAnchor` and do not discard the
 social action.
+
+## Badges
+
+Deploy with `SOCIAL_ID_REGISTRY_ADDRESS=0x... pnpm --filter contracts deploy:sepolia-badges`.
+Badge identifiers are `keccak256` hashes, for example `keccak256("EARLY_MEMBER")`.
