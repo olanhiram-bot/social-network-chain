@@ -1,9 +1,11 @@
 import {
   Controller,
+  Body,
   Get,
   Headers,
   NotFoundException,
   Param,
+  Post,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -25,6 +27,12 @@ export class WalletsController {
   @ApiOperation({ summary: 'Get current user wallet' })
   me(@Headers('authorization') authorization?: string) {
     return this.walletsService.getByUserId(this.userId(authorization));
+  }
+
+  @Post('export')
+  @ApiOperation({ summary: 'Export the custody wallet private key after password verification' })
+  export(@Headers('authorization') authorization: string | undefined, @Body() body: { password: string }) {
+    return this.walletsService.exportPrivateKey(this.userId(authorization), body.password);
   }
 
   @Get('anchors')

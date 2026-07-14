@@ -18,6 +18,7 @@ model User {
   bio                      String?
   wallet                   Wallet?
   sessions                 Session[]
+  passwordResetTokens      PasswordResetToken[]
   posts                    Post[]
   stories                  Story[]
   storyViews               StoryView[]
@@ -287,6 +288,18 @@ model Session {
   expiresAt        DateTime
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

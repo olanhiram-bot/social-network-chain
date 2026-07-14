@@ -6,7 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { generateNonce, SiweMessage } from 'siwe';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -75,6 +75,45 @@ export class AuthService {
     }
 
     return this.createSession(user);
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || !process.env.BREVO_API_KEY || !process.env.BREVO_SENDER_EMAIL) return { ok: true };
+
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+    await this.prisma.passwordResetToken.create({
+      data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 30 * 60 * 1000) },
+    });
+
+    const appUrl = (process.env.WEB_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+    const delivery = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: { name: 'Nexo', email: process.env.BREVO_SENDER_EMAIL },
+        to: [{ email: user.email }],
+        subject: 'Reset your Nexo password',
+        htmlContent: `<p>Reset your password within 30 minutes:</p><p><a href="${appUrl}/?reset=${token}">Reset password</a></p>`,
+      }),
+    });
+    if (!delivery.ok) throw new Error('Password reset email could not be sent');
+    return { ok: true };
+  }
+
+  async resetPassword(token: string, password: string) {
+    if (password.length < 8) throw new UnauthorizedException('Password must be at least 8 characters');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const reset = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+    if (!reset || reset.expiresAt < new Date()) throw new UnauthorizedException('Invalid or expired reset link');
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: reset.userId }, data: { password: await bcrypt.hash(password, 10) } }),
+      this.prisma.session.deleteMany({ where: { userId: reset.userId } }),
+      this.prisma.passwordResetToken.delete({ where: { id: reset.id } }),
+    ]);
+    return { ok: true };
   }
 
   createSiweNonce() {

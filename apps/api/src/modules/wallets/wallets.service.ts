@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { Wallet as EvmWallet } from 'ethers';
 import { PrismaService } from '../../prisma/prisma.service';
-import { encryptSecret } from './crypto-box';
+import { decryptSecret, encryptSecret } from './crypto-box';
 
 @Injectable()
 export class WalletsService {
@@ -37,6 +38,17 @@ export class WalletsService {
     });
 
     return wallet ? this.publicWallet(wallet) : null;
+  }
+
+  async exportPrivateKey(userId: string, password: string) {
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { userId },
+      include: { user: { select: { password: true } } },
+    });
+    if (!wallet || !(await bcrypt.compare(password, wallet.user.password))) {
+      throw new UnauthorizedException('Invalid password');
+    }
+    return { address: wallet.address, privateKey: decryptSecret(wallet.encryptedPrivateKey) };
   }
 
   private publicWallet(wallet: {

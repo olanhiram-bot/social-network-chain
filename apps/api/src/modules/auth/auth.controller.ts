@@ -47,6 +47,9 @@ class RefreshDto {
   refreshToken: string;
 }
 
+class PasswordResetRequestDto { email: string; }
+class PasswordResetDto { token: string; password: string; }
+
 class UpdateMeDto {
   @ApiProperty({ example: 'Daniel', required: false })
   name?: string;
@@ -91,6 +94,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.password);
+  }
+
+  @Post('password-reset/request')
+  requestPasswordReset(@Body() body: PasswordResetRequestDto) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post('password-reset/confirm')
+  resetPassword(@Body() body: PasswordResetDto) {
+    return this.authService.resetPassword(body.token, body.password);
   }
 
   @Get('siwe/nonce')

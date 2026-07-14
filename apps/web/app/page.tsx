@@ -498,6 +498,7 @@ export default function Page() {
   const [reportTarget, setReportTarget] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [resetToken, setResetToken] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("reset") ?? "");
   const walletSyncStarted = useRef(false);
   const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -896,8 +897,9 @@ export default function Page() {
     setError("");
 
     const form = new FormData(event.currentTarget);
-    const body =
-      mode === "register"
+    const body = resetToken
+      ? { token: resetToken, password: String(form.get("password")) }
+      : mode === "register"
         ? {
             name: String(form.get("name")),
             email: String(form.get("email")),
@@ -909,16 +911,51 @@ export default function Page() {
           };
 
     try {
-      saveStoredSession(
-        await request<Session>(`/auth/${mode}`, {
+      const nextSession = await request<Session>(resetToken ? "/auth/password-reset/confirm" : `/auth/${mode}`, {
           method: "POST",
           body: JSON.stringify(body),
-        }),
-      );
+        });
+      if (resetToken) {
+        setResetToken("");
+        window.history.replaceState(null, "", window.location.pathname);
+        setError("Password updated. You can sign in now.");
+      } else {
+        saveStoredSession(nextSession);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function requestPasswordReset(email: string) {
+    if (!email) return false;
+    setLoading(true);
+    setError("");
+    try {
+      await request("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) });
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the recovery link");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function exportPrivateKey() {
+    const password = window.prompt("Enter your password to export your private key. Never share it.");
+    if (!password) return;
+    try {
+      const result = await authed<{ privateKey: string }>("/wallet/export", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      });
+      await navigator.clipboard.writeText(result.privateKey);
+      window.alert("Private key copied to your clipboard. Store it offline and never share it.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not export private key");
     }
   }
 
@@ -1849,7 +1886,9 @@ export default function Page() {
                   loading={loading}
                   mode={mode}
                   onModeChange={setMode}
+                  onForgotPassword={requestPasswordReset}
                   onSubmit={authenticate}
+                  resetToken={resetToken}
                   walletLoading={walletLoading}
                 />
               </div>
@@ -2119,6 +2158,7 @@ export default function Page() {
             onAdd={addFriend}
             onOpenProfile={openUserProfile}
             onReject={(id) => respondToRequest(id, "reject")}
+            onExportPrivateKey={exportPrivateKey}
           />
         )}
       </div>
@@ -2525,7 +2565,7 @@ function Stories({
   }
 
   return (
-    <section className="nexo-stories rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
+    <section className="nexo-stories">
       {creating && createPortal(
         <div className="fixed inset-0 z-[100] grid place-items-center bg-[#17211f]/75 px-4 backdrop-blur-sm">
           <form
@@ -2575,20 +2615,20 @@ function Stories({
         document.body,
       )}
 
-      <div className="nexo-story-row">
+      <div className="flex gap-2 overflow-x-auto px-0.5 py-1 pb-3 [scrollbar-width:thin]">
         <button
-          className="nexo-story-card relative overflow-hidden rounded-2xl border border-dashed border-[#b8ad9b] bg-[#fffaf0] text-left"
+          className="relative h-[12.5rem] w-[7.25rem] shrink-0 overflow-visible rounded-xl border border-[#d8dee8] bg-white text-left shadow-sm"
           onClick={() => setCreating(true)}
           type="button"
         >
-          <div className="grid h-28 place-items-center bg-[#17211f]">
-            <span className="grid size-11 place-items-center rounded-full bg-[#f2c166] text-2xl font-black text-[#17211f]">
-              +
-            </span>
+          <div className="grid h-[8.55rem] overflow-hidden rounded-t-xl bg-[#e9edf2] place-items-center [&>*]:size-full [&>*]:rounded-none">
+            <Avatar name={user.name} size="xl" src={user.avatar} />
           </div>
-          <div className="p-3">
-            <p className="text-sm font-black">Create story</p>
-            <p className="mt-1 text-xs text-[#6d746f]">Photo or video</p>
+          <span aria-hidden="true" className="absolute left-1/2 top-[7.4rem] grid size-10 -translate-x-1/2 place-items-center rounded-full border-[3px] border-white bg-[#1877f2] text-2xl font-medium leading-none text-white">
+            +
+          </span>
+          <div className="grid h-[3.95rem] place-items-center px-1 pt-5 text-center text-[0.78rem] font-bold leading-tight text-[#1c1e21]">
+            <p>Create story</p>
           </div>
         </button>
 
@@ -2596,24 +2636,26 @@ function Stories({
           const story = group.stories[group.stories.length - 1];
           return (
             <div
-              className="nexo-story-card relative overflow-hidden rounded-2xl bg-[#17211f] text-white"
+              className="relative h-[12.5rem] w-[7.25rem] shrink-0 overflow-hidden rounded-xl border border-[#d8dee8] bg-[#1c1e21] text-white shadow-sm"
               key={group.authorId}
             >
-            <button
+              <button
               className="size-full text-left"
               onClick={() => openStory(group.stories[0])}
               type="button"
             >
               {story.mediaType === "IMAGE" ? (
-                <img alt="" className="size-full object-cover" src={mediaSrc(story.mediaUrl)} />
+                <img alt="" className="size-full object-cover transition-transform duration-200 hover:scale-[1.025]" src={mediaSrc(story.mediaUrl)} />
               ) : (
                 <div className="grid size-full place-items-center bg-[#263532] px-4 text-center text-sm font-bold">
                   {story.mediaType === "VIDEO" ? "Video" : "Stream"}
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 pt-12">
-                <p className="text-sm font-bold">{story.authorName}</p>
-                <p className="text-xs">{group.stories.length} {group.stories.length === 1 ? "story" : "stories"}</p>
+              <div className="absolute left-2 top-2 z-10 [&>*]:rounded-full [&>*]:border-2 [&>*]:border-white [&>*]:shadow-sm">
+                <Avatar name={story.authorName} size="sm" src={story.authorAvatar} />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-12">
+                <p className="text-sm font-bold">{story.authorId === user.id ? "Your story" : story.authorName}</p>
               </div>
             </button>
           </div>
@@ -3494,6 +3536,7 @@ function RightRail({
   onAccept,
   onAdd,
   onReject,
+  onExportPrivateKey,
 }: {
   friends: User[];
   onOpenProfile: (userId: string) => void;
@@ -3503,12 +3546,13 @@ function RightRail({
   onAccept: (id: string) => void;
   onAdd: (id: string) => void;
   onReject: (id: string) => void;
+  onExportPrivateKey: () => void;
 }) {
   return (
     <aside className="hidden space-y-4 xl:block">
       <Panel title="Cuenta onchain">
         {wallet ? (
-          <OnchainIdentity wallet={wallet} />
+          <OnchainIdentity wallet={wallet} onExportPrivateKey={onExportPrivateKey} />
         ) : (
           <EmptyText>Wallet pendiente.</EmptyText>
         )}
@@ -4937,7 +4981,7 @@ function formatLiveOffset(offsetMs: number) {
   return `${minutes}:${seconds}`;
 }
 
-function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
+function OnchainIdentity({ wallet, onExportPrivateKey }: { wallet: WalletAccount; onExportPrivateKey: () => void }) {
   const { address, chainId } = useAccount();
   const [txError, setTxError] = useState("");
   const idReady = Boolean(CONTRACTS.idRegistry);
@@ -5089,6 +5133,9 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
         </span>
       </div>
       <div className="grid gap-2">
+        <button className={secondaryButtonClass} onClick={onExportPrivateKey}>
+          Export private key
+        </button>
         {(!idReady || !keyReady || !storageReady) && (
           <p className="rounded-xl bg-[#fff4d6] p-2 text-xs font-semibold text-[#6b4b00]">
             Configure the missing Sepolia contracts to enable all onchain actions.
@@ -5586,16 +5633,49 @@ function AuthForm({
   loading,
   mode,
   onModeChange,
+  onForgotPassword,
   onSubmit,
+  resetToken,
   walletLoading,
 }: {
   error: string;
   loading: boolean;
   mode: "login" | "register";
   onModeChange: (mode: "login" | "register") => void;
+  onForgotPassword: (email: string) => Promise<boolean>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  resetToken: string;
   walletLoading: boolean;
 }) {
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryNotice, setRecoveryNotice] = useState("");
+
+  if (resetToken) {
+    return <form className="space-y-3" onSubmit={onSubmit}>
+      <p className="text-sm font-semibold">Choose a new password.</p>
+      <input className={inputClass} minLength={8} name="password" placeholder="New password" required type="password" />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <button className={`${primaryButtonClass} w-full`} disabled={loading}>{loading ? "Saving..." : "Reset password"}</button>
+    </form>;
+  }
+
+  if (recovering) {
+    return <form className="space-y-4" onSubmit={(event) => {
+      event.preventDefault();
+      void onForgotPassword(recoveryEmail).then((sent) => sent && setRecoveryNotice("If the account exists, a reset email has been sent."));
+    }}>
+      <div>
+        <h3 className="text-lg font-black">Reset password</h3>
+        <p className="mt-1 text-sm text-[var(--auth-panel-muted)]">Enter your account email and we will send a recovery link.</p>
+      </div>
+      <input className={inputClass} name="recoveryEmail" onChange={(event) => setRecoveryEmail(event.target.value)} placeholder="Email" required type="email" value={recoveryEmail} />
+      {recoveryNotice && <p className="text-sm font-semibold text-emerald-700">{recoveryNotice}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <button className={`${primaryButtonClass} w-full`} disabled={loading} type="submit">{loading ? "Sending..." : "Send recovery link"}</button>
+      <button className="w-full text-sm font-semibold text-[var(--accent)]" onClick={() => setRecovering(false)} type="button">Back to sign in</button>
+    </form>;
+  }
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
@@ -5631,9 +5711,10 @@ function AuthForm({
       <button className={`${primaryButtonClass} w-full transition-transform duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px active:translate-y-0`} disabled={loading}>
         {loading ? "Sending..." : mode === "login" ? "Sign in" : "Create account"}
       </button>
-      <div className="border-t border-[var(--rule)] pt-4 text-center">
+      <div className="space-y-3 border-t border-[var(--rule)] pt-4 text-center">
+        {mode === "login" && <button className="block w-full text-sm font-semibold text-[var(--accent)]" onClick={() => setRecovering(true)} type="button">Forgot password?</button>}
         <button
-          className="whitespace-nowrap rounded-xl bg-[var(--signal)] px-4 py-3 text-sm font-bold text-[var(--auth-deep)] transition-transform duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px active:translate-y-0"
+          className="w-full whitespace-nowrap rounded-xl bg-[var(--signal)] px-4 py-3 text-sm font-bold text-[var(--auth-deep)] transition-transform duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px active:translate-y-0"
           type="button"
           onClick={() => onModeChange(mode === "login" ? "register" : "login")}
         >

@@ -396,19 +396,6 @@ textarea:focus-visible {
   border-color: var(--rule) !important;
 }
 
-.nexo-story-row {
-  display: flex;
-  gap: var(--space-xs);
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
-  scrollbar-width: thin;
-}
-
-.nexo-story-card {
-  flex: 0 0 9rem;
-  height: 11rem;
-}
-
 .nexo-composer {
   padding: 0.65rem;
   border-radius: 0.9rem;
