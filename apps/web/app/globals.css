@@ -396,6 +396,31 @@ textarea:focus-visible {
   border-color: var(--rule) !important;
 }
 
+/* Legacy Facebook-like utility colours, mapped to the Nexo logo palette. */
+.nexo-app :is([class*="bg-[#ece7dc]"], [class*="bg-[#e4e6eb]"], [class*="bg-[#f0f2f5]"], [class*="bg-[#dadde1]"], [class*="bg-[#ccd0d5]"]) {
+  background-color: var(--surface-muted) !important;
+}
+
+.nexo-app :is([class*="bg-[#17211f]"], [class*="bg-[#050505]"], [class*="bg-[#111816]"], [class*="bg-[#1c1e21]"], [class*="bg-[#263532]"], [class*="bg-[#090b0b]"], [class*="bg-[#171717]"], [class~="bg-black"]) {
+  background-color: var(--foreground) !important;
+}
+
+.nexo-app :is([class*="bg-[#1877f2]"], [class*="bg-[#77a8ff]"]) {
+  background-color: var(--accent) !important;
+}
+
+.nexo-app :is([class*="text-[#17211f]"], [class*="text-[#050505]"], [class*="text-[#1c1e21]"]) {
+  color: var(--foreground) !important;
+}
+
+.nexo-app :is([class*="text-[#65676b]"], [class*="text-[#65736f]"], [class*="text-[#6d746f]"], [class*="text-[#53645f]"]) {
+  color: var(--ink-muted) !important;
+}
+
+.nexo-app :is([class*="border-[#dadde1]"], [class*="border-[#ccd0d5]"], [class*="border-[#d8dade]"]) {
+  border-color: var(--rule) !important;
+}
+
 .nexo-composer {
   padding: 0.65rem;
   border-radius: 0.9rem;

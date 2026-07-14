@@ -6,6 +6,7 @@ import { arbitrumSepolia, sepolia } from "@reown/appkit/networks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createStorage, WagmiProvider } from "wagmi";
+import nexoLogo from "./nexo.png";
 
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 const appUrl =
@@ -40,7 +41,7 @@ export const appKit = createAppKit({
     name: "Social Network",
     description: "Signer-backed social network",
     url: appUrl,
-    icons: [`${appUrl}/favicon.ico`],
+    icons: [nexoLogo.src],
   },
   features: {
     analytics: false,

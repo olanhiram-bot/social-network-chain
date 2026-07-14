@@ -23,6 +23,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { appKit } from "./providers";
+import nexoLogo from "./nexo.png";
 
 type User = {
   id: string;
@@ -1856,7 +1857,7 @@ export default function Page() {
         <div className="mx-auto grid w-full max-w-[76rem] lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)]">
           <section className="flex min-h-[36rem] flex-col px-7 py-8 sm:px-12 sm:py-12 lg:min-h-screen lg:px-16 lg:py-14" aria-labelledby="nexo-auth-title">
             <div className="inline-flex items-center gap-3 text-base font-black tracking-tight" aria-label="Nexo">
-              <span className="grid size-9 place-items-center rounded-lg bg-[var(--auth-signal)] font-mono text-sm text-[var(--auth-deep)]">N</span>
+              <img alt="Nexo" className="size-9 rounded-lg object-cover" src={nexoLogo.src} />
               <span>Nexo</span>
             </div>
             <div className="my-auto max-w-xl py-16 lg:py-0">
@@ -2307,9 +2308,7 @@ function TopBar({
   return (
     <header className="nexo-topbar sticky top-0 z-20 border bg-[#fffdf8]/90 backdrop-blur">
       <div className="mx-auto flex h-full max-w-[1464px] items-center gap-3 px-4">
-        <div className="grid size-10 place-items-center rounded-xl bg-[#17211f] text-lg font-black text-[#f2c166]">
-          N
-        </div>
+        <img alt="Nexo" className="size-10 rounded-xl object-cover shadow-sm" src={nexoLogo.src} />
         <form
           className="hidden md:block"
           onSubmit={(event) => {
@@ -3687,7 +3686,7 @@ function FriendSuggestionCard({ onAdd, onOpenProfile, user }: { onAdd: (userId: 
 
   return (
     <article className="flex !rounded-none !shadow-none items-center gap-3 border-b border-[#e4e6eb] bg-white py-2 sm:block sm:!rounded-xl sm:overflow-hidden sm:border-[#ded7c9] sm:p-0 sm:!shadow-sm">
-      <button aria-label={`Open ${user.name}'s profile`} className="size-16 shrink-0 overflow-hidden rounded-full bg-[#eceff3] sm:block sm:aspect-square sm:size-auto sm:w-full sm:rounded-none" type="button" onClick={() => onOpenProfile(user.id)}>
+      <button aria-label={`Open ${user.name}'s profile`} className="size-16 shrink-0 overflow-hidden rounded-full bg-[#eceff3] sm:block sm:aspect-square sm:size-auto sm:w-full sm:rounded-none sm:[&>*]:size-full sm:[&>*]:rounded-none" type="button" onClick={() => onOpenProfile(user.id)}>
         <Avatar name={user.name} src={user.avatar} size="xl" />
       </button>
       <div className="min-w-0 flex-1 sm:p-3">
