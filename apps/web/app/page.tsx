@@ -308,6 +308,36 @@ const fallbackApiUrl = API_URL.includes("127.0.0.1")
   : API_URL.includes("localhost")
     ? API_URL.replace("localhost", "127.0.0.1")
     : "";
+
+async function optimizeImage(file: File) {
+  if (!['image/jpeg', 'image/webp'].includes(file.type) || !('createImageBitmap' in window)) {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  const longestSide = Math.max(bitmap.width, bitmap.height);
+  const scale = Math.min(1, 2560 / longestSide);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) {
+    bitmap.close();
+    return file;
+  }
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.92));
+  if (!blob || blob.size >= file.size) {
+    return file;
+  }
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
+    lastModified: file.lastModified,
+    type: 'image/webp',
+  });
+}
 const isActiveStory = (story: Pick<Story, "expiresAt">, now = Date.now()) =>
   new Date(story.expiresAt).getTime() > now;
 const CONTRACTS = {
@@ -548,7 +578,7 @@ export default function Page() {
     }
 
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", await optimizeImage(file));
     const response = await apiFetch("/media", {
       method: "POST",
       headers: { Authorization: `Bearer ${session.accessToken}` },
@@ -3431,11 +3461,9 @@ function PostMedia({
   }
 
   return (
-    <img
-      alt=""
-      className="mt-4 max-h-[620px] w-full rounded-2xl object-cover"
-      src={mediaSrc(url)}
-    />
+    <div className="mt-4 flex max-h-[620px] w-full items-center justify-center overflow-hidden rounded-2xl bg-[#f4f6f8]">
+      <img alt="" className="block h-auto max-h-[620px] w-auto max-w-full object-contain" src={mediaSrc(url)} />
+    </div>
   );
 }
 
