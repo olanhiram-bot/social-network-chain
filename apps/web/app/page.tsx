@@ -461,7 +461,6 @@ export default function Page() {
   const [reportTarget, setReportTarget] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
-  const [walletOnSepolia, setWalletOnSepolia] = useState(false);
   const walletSyncStarted = useRef(false);
   const walletChainSwitchStarted = useRef(false);
   const { address, chainId, connector, isConnected } = useAccount();
@@ -803,7 +802,6 @@ export default function Page() {
 
   const ensureWalletOnSepolia = useCallback(async () => {
     if (!connector) {
-      setWalletOnSepolia(false);
       return false;
     }
 
@@ -812,12 +810,11 @@ export default function Page() {
     }
 
     const isOnSepolia = (await connector.getChainId()) === SEPOLIA_CHAIN_ID;
-    setWalletOnSepolia(isOnSepolia);
     return isOnSepolia;
   }, [connector, switchChainAsync]);
 
   useEffect(() => {
-    if (!isConnected || !connector) {
+    if (!session || !isConnected || !connector) {
       walletChainSwitchStarted.current = false;
       return;
     }
@@ -830,13 +827,13 @@ export default function Page() {
       .finally(() => {
         walletChainSwitchStarted.current = false;
       });
-  }, [chainId, connector, ensureWalletOnSepolia, isConnected]);
+  }, [chainId, connector, ensureWalletOnSepolia, isConnected, session]);
 
   useEffect(() => {
     if (
       !isConnected ||
       !address ||
-      !walletOnSepolia ||
+      !connector ||
       session ||
       walletSyncStarted.current
     ) {
@@ -844,13 +841,13 @@ export default function Page() {
     }
 
     const walletAddress = address;
-    const walletChainId = SEPOLIA_CHAIN_ID;
     walletSyncStarted.current = true;
     async function syncWalletSession() {
       setWalletLoading(true);
       setError("");
 
       try {
+        const walletChainId = await connector.getChainId();
         const { nonce } = await request<{ nonce: string }>("/auth/siwe/nonce");
         const message = createSiweMessage({
           address: walletAddress,
@@ -885,7 +882,7 @@ export default function Page() {
     }
 
     void syncWalletSession();
-  }, [address, isConnected, session, signMessageAsync, walletOnSepolia]);
+  }, [address, connector, isConnected, session, signMessageAsync]);
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
