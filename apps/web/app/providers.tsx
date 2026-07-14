@@ -22,8 +22,11 @@ const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks,
   ssr: true,
-  storage: createStorage({ key: "nexo-wagmi-sepolia" }),
-  syncConnectedChain: true,
+  storage: createStorage({ key: "nexo-wagmi-sepolia-v2" }),
+  // AppKit already exposes Sepolia as the only supported network. Keeping the
+  // connector's chain untouched prevents mobile wallets from racing Wagmi
+  // while their connection is still being restored.
+  syncConnectedChain: false,
 });
 
 export const appKit = createAppKit({

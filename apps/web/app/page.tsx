@@ -5,7 +5,6 @@ import {
   Children,
   FormEvent,
   type ReactNode,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -20,7 +19,6 @@ import {
   useDisconnect,
   useReadContract,
   useSignMessage,
-  useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
@@ -501,11 +499,9 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const walletSyncStarted = useRef(false);
-  const walletChainSwitchStarted = useRef(false);
-  const { address, chainId, connector, isConnected } = useAccount();
+  const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
-  const { switchChainAsync } = useSwitchChain();
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -839,40 +835,11 @@ export default function Page() {
     return () => window.clearInterval(id);
   }, [sessionSnapshot]);
 
-  const ensureWalletOnSepolia = useCallback(async () => {
-    if (!connector) {
-      return false;
-    }
-
-    if (await connector.getChainId() !== SEPOLIA_CHAIN_ID) {
-      await switchChainAsync({ chainId: SEPOLIA_CHAIN_ID });
-    }
-
-    const isOnSepolia = (await connector.getChainId()) === SEPOLIA_CHAIN_ID;
-    return isOnSepolia;
-  }, [connector, switchChainAsync]);
-
-  useEffect(() => {
-    if (!session || !isConnected || !connector) {
-      walletChainSwitchStarted.current = false;
-      return;
-    }
-
-    if (walletChainSwitchStarted.current) return;
-
-    walletChainSwitchStarted.current = true;
-    void ensureWalletOnSepolia()
-      .catch(() => setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet."))
-      .finally(() => {
-        walletChainSwitchStarted.current = false;
-      });
-  }, [chainId, connector, ensureWalletOnSepolia, isConnected, session]);
-
   useEffect(() => {
     if (
       !isConnected ||
       !address ||
-      !connector ||
+      !chainId ||
       session ||
       walletSyncStarted.current
     ) {
@@ -880,14 +847,13 @@ export default function Page() {
     }
 
     const walletAddress = address;
-    const walletConnector = connector;
+    const walletChainId = chainId;
     walletSyncStarted.current = true;
     async function syncWalletSession() {
       setWalletLoading(true);
       setError("");
 
       try {
-        const walletChainId = await walletConnector.getChainId();
         const { nonce } = await request<{ nonce: string }>("/auth/siwe/nonce");
         const message = createSiweMessage({
           address: walletAddress,
@@ -922,7 +888,7 @@ export default function Page() {
     }
 
     void syncWalletSession();
-  }, [address, connector, isConnected, session, signMessageAsync]);
+  }, [address, chainId, isConnected, session, signMessageAsync]);
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -5128,7 +5094,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
             Configure the missing Sepolia contracts to enable all onchain actions.
           </p>
         )}
-        {wrongChain && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Switching your wallet to Ethereum Sepolia...</p>}
+        {wrongChain && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Onchain actions use Ethereum Sepolia.</p>}
         {txError && (
           <p className="rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-semibold text-red-700">
             {txError}
