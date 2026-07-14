@@ -61,6 +61,16 @@ export class LivesController {
     return this.livesService.start(this.bearer(authorization), body.title);
   }
 
+  @Post(':id/token')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a short-lived LiveKit room token' })
+  token(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.livesService.token(this.bearer(authorization), id);
+  }
+
   @Get(':id/messages')
   @ApiOperation({ summary: 'List live chat messages' })
   messages(@Param('id') id: string) {

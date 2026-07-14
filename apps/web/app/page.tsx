@@ -13,6 +13,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { Room, RoomEvent, Track } from "livekit-client";
 import { isAddress, padHex, zeroAddress, type Address } from "viem";
 import {
   useAccount,
@@ -108,6 +109,13 @@ type LiveSession = {
   hostId: string;
   hostName: string;
   hostAvatar: string | null;
+};
+
+type LiveKitConnection = {
+  url: string;
+  roomName: string;
+  token: string;
+  canPublish: boolean;
 };
 
 type LiveChatMessage = {
@@ -764,7 +772,7 @@ export default function Page() {
   }, [sessionSnapshot, activeConversation?.id]);
 
   useEffect(() => {
-    if (!session) {
+    if (!session || lives.length === 0) {
       return;
     }
 
@@ -775,10 +783,10 @@ export default function Page() {
       } catch {
         // Keep the current live list if a polling request fails.
       }
-    }, 1000);
+    }, 5_000);
 
     return () => window.clearInterval(id);
-  }, [sessionSnapshot]);
+  }, [sessionSnapshot, lives.length]);
 
   useEffect(() => {
     if (!session || view !== "messages") {
@@ -872,13 +880,14 @@ export default function Page() {
     }
 
     const walletAddress = address;
+    const walletConnector = connector;
     walletSyncStarted.current = true;
     async function syncWalletSession() {
       setWalletLoading(true);
       setError("");
 
       try {
-        const walletChainId = await connector.getChainId();
+        const walletChainId = await walletConnector.getChainId();
         const { nonce } = await request<{ nonce: string }>("/auth/siwe/nonce");
         const message = createSiweMessage({
           address: walletAddress,
@@ -1419,16 +1428,16 @@ export default function Page() {
     setError("");
 
     try {
-      setLives([
-        await authed<LiveSession>("/lives", {
-          method: "POST",
-          body: JSON.stringify({ title }),
-        }),
-        ...lives,
-      ]);
+      const live = await authed<LiveSession>("/lives", {
+        method: "POST",
+        body: JSON.stringify({ title }),
+      });
+      setLives([live, ...lives]);
       await refreshSocialData();
+      return live;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -1443,28 +1452,15 @@ export default function Page() {
         body: JSON.stringify({ recordingUrl }),
       });
       await refreshSocialData();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
+      return false;
     }
   }
 
-  async function updateLiveFrame(id: string, file: File) {
-    if (!session) {
-      return;
-    }
-
-    const form = new FormData();
-    form.append("file", file);
-
-    try {
-      await apiFetch(`/lives/${id}/frame`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${session.accessToken}` },
-        body: form,
-      });
-    } catch {
-      // Frame updates are best-effort; the live should continue even if one frame fails.
-    }
+  function getLiveToken(id: string) {
+    return authed<LiveKitConnection>(`/lives/${id}/token`, { method: "POST" });
   }
 
   async function sendLiveMessage(event: FormEvent<HTMLFormElement>, liveId: string) {
@@ -1947,6 +1943,7 @@ export default function Page() {
             onDeletePost={deletePost}
             onEditLive={editLive}
             onEditPost={editPost}
+            onLiveToken={getLiveToken}
             onOpenProfile={openUserProfile}
             onSendLiveMessage={sendLiveMessage}
             onSubmit={updateProfile}
@@ -1958,6 +1955,7 @@ export default function Page() {
             viewerId={session.user.id}
             onAddFriend={addFriend}
             onBlock={blockUser}
+            onLiveToken={getLiveToken}
             onOpenProfile={openUserProfile}
             onSendLiveMessage={sendLiveMessage}
           />
@@ -2095,6 +2093,7 @@ export default function Page() {
             onEdit={editLive}
             onOpenProfile={openUserProfile}
             onSendMessage={sendLiveMessage}
+            onLiveToken={getLiveToken}
           />
         ) : (
           <section className="space-y-4">
@@ -2113,10 +2112,10 @@ export default function Page() {
             onUploadMedia={uploadMedia}
             user={session.user}
             onEndLive={endLive}
+            onLiveToken={getLiveToken}
             onSendLiveMessage={sendLiveMessage}
               onStartLive={startLive}
               onSubmit={createPost}
-              onUpdateLiveFrame={updateLiveFrame}
             />
             {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             {posts.length === 0 ? (
@@ -2734,10 +2733,10 @@ function Composer({
   onUploadMedia,
   user,
   onEndLive,
+  onLiveToken,
   onSendLiveMessage,
   onStartLive,
   onSubmit,
-  onUpdateLiveFrame,
 }: {
   lives: LiveSession[];
   liveMessages: Record<string, LiveChatMessage[]>;
@@ -2745,22 +2744,25 @@ function Composer({
   myPages: SocialPage[];
   onUploadMedia: (file: File) => Promise<{ url: string; mediaType: "IMAGE" | "VIDEO" }>;
   user: User;
-  onEndLive: (id: string, recordingUrl?: string) => void;
+  onEndLive: (id: string, recordingUrl?: string) => Promise<boolean>;
+  onLiveToken: (id: string) => Promise<LiveKitConnection>;
   onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
-  onStartLive: (title: string) => Promise<void>;
+  onStartLive: (title: string) => Promise<LiveSession | null>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdateLiveFrame: (id: string, file: File) => Promise<void>;
 }) {
   const [liveOpen, setLiveOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [endingLive, setEndingLive] = useState(false);
+  const [liveNotice, setLiveNotice] = useState("");
   const liveVideoRef = useRef<HTMLVideoElement>(null);
+  const broadcastVideoRef = useRef<HTMLVideoElement>(null);
   const liveStreamRef = useRef<MediaStream | null>(null);
+  const liveRoomRef = useRef<Room | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const finalizingLiveRef = useRef(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
-  const frameUploadBusyRef = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const [addOptionsOpen, setAddOptionsOpen] = useState(false);
   const [postContent, setPostContent] = useState("");
@@ -2773,10 +2775,23 @@ function Composer({
   const myLiveMessages = myLive ? liveMessages[myLive.id] ?? [] : [];
 
   useEffect(() => {
-    if (liveVideoRef.current && liveStreamRef.current) {
-      liveVideoRef.current.srcObject = liveStreamRef.current;
+    const stream = liveStreamRef.current;
+    if (!stream) {
+      return;
     }
-  }, [liveOpen, cameraReady]);
+
+    [liveVideoRef.current, broadcastVideoRef.current].forEach((video) => {
+      if (video) {
+        video.srcObject = stream;
+        void video.play().catch(() => undefined);
+      }
+    });
+  }, [liveOpen, cameraReady, myLive]);
+
+  useEffect(() => () => {
+    liveRoomRef.current?.disconnect();
+    liveStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   async function enableCamera() {
     setCameraError("");
@@ -2786,9 +2801,12 @@ function Composer({
       liveStreamRef.current = stream;
       setCameraReady(true);
 
-      if (liveVideoRef.current) {
-        liveVideoRef.current.srcObject = stream;
-      }
+      [liveVideoRef.current, broadcastVideoRef.current].forEach((video) => {
+        if (video) {
+          video.srcObject = stream;
+          void video.play().catch(() => undefined);
+        }
+      });
     } catch {
       setCameraError("Could not access camera or microphone.");
     }
@@ -2805,34 +2823,74 @@ function Composer({
     setCameraReady(false);
   }
 
+  async function connectLiveRoom(live: LiveSession) {
+    const stream = liveStreamRef.current;
+    if (!stream) {
+      return "Camera is not available.";
+    }
+
+    try {
+      const connection = await onLiveToken(live.id);
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      await room.connect(connection.url, connection.token);
+      await Promise.all(stream.getTracks().map((track) => room.localParticipant.publishTrack(track)));
+      liveRoomRef.current = room;
+      return "";
+    } catch (error) {
+      liveRoomRef.current?.disconnect();
+      liveRoomRef.current = null;
+      return error instanceof Error ? error.message : "Unknown LiveKit connection error.";
+    }
+  }
+
   async function submitLive(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = String(new FormData(event.currentTarget).get("title")).trim();
 
-    if (title && cameraReady) {
-      await onStartLive(title);
-      startRecording();
+    if (!title || !cameraReady) {
+      return;
+    }
+
+    const live = await onStartLive(title);
+    if (!live) {
+      return;
+    }
+
+    const liveKitError = await connectLiveRoom(live);
+    if (liveKitError) {
+      await onEndLive(live.id);
+      setCameraError(`Could not connect to the live video service: ${liveKitError}`);
+      return;
+    }
+
+    if (!startRecording()) {
+      setCameraError("Live video is running, but this browser could not save a replay.");
     }
   }
 
   function startRecording() {
     const stream = liveStreamRef.current;
     if (!stream || typeof MediaRecorder === "undefined") {
-      return;
+      return false;
     }
 
-    chunksRef.current = [];
-    const options = MediaRecorder.isTypeSupported("video/webm")
-      ? { mimeType: "video/webm" }
-      : undefined;
-    const recorder = new MediaRecorder(stream, options);
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
-    recorder.start(1000);
-    recorderRef.current = recorder;
+    try {
+      chunksRef.current = [];
+      const options = MediaRecorder.isTypeSupported("video/webm")
+        ? { mimeType: "video/webm", videoBitsPerSecond: 1_000_000, audioBitsPerSecond: 64_000 }
+        : undefined;
+      const recorder = new MediaRecorder(stream, options);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+      recorder.start(1000);
+      recorderRef.current = recorder;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async function finishLive(id: string) {
@@ -2841,60 +2899,32 @@ function Composer({
     }
 
     finalizingLiveRef.current = true;
+    setEndingLive(true);
     setCameraError("");
+    setLiveNotice("");
     try {
       const recordingUrl = await stopRecordingAndUpload();
-      if (!recordingUrl) {
-        setCameraError("The recording could not be saved. The live is still active so you can try again.");
+      const ended = await onEndLive(id, recordingUrl);
+      if (!ended) {
+        setCameraError("Could not end the live. Check your connection and try again.");
         return;
       }
 
-      await onEndLive(id, recordingUrl);
       stopCamera();
+      liveRoomRef.current?.disconnect();
+      liveRoomRef.current = null;
       setLiveOpen(false);
+      if (!recordingUrl) {
+        setCameraError("Live ended, but its replay could not be saved.");
+        setLiveNotice("Live ended, but its replay could not be saved.");
+      } else {
+        setLiveNotice("Live ended. Your replay is now available from your profile.");
+      }
     } finally {
       finalizingLiveRef.current = false;
+      setEndingLive(false);
     }
   }
-
-  const publishFrame = useCallback(async (liveId: string) => {
-    const video = liveVideoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight || frameUploadBusyRef.current) {
-      return;
-    }
-
-    frameUploadBusyRef.current = true;
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 480;
-      canvas.height = Math.round((video.videoHeight / video.videoWidth) * canvas.width);
-      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.62));
-      if (!blob) {
-        return;
-      }
-
-      const file = new File([blob], `live-frame-${Date.now()}.jpg`, { type: "image/jpeg" });
-      await onUpdateLiveFrame(liveId, file);
-    } catch {
-      // Best-effort preview frame.
-    } finally {
-      frameUploadBusyRef.current = false;
-    }
-  }, [onUpdateLiveFrame]);
-
-  useEffect(() => {
-    if (!myLive || !cameraReady) {
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      void publishFrame(myLive.id);
-    }, 1000);
-    void publishFrame(myLive.id);
-
-    return () => window.clearInterval(id);
-  }, [myLive, cameraReady, publishFrame]);
 
   function stopRecordingAndUpload() {
     return new Promise<string | undefined>((resolve) => {
@@ -2942,6 +2972,12 @@ function Composer({
 
   return (
     <>
+      {liveNotice && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[#b9dfd0] bg-[#effaf5] px-4 py-3 text-sm font-semibold text-[#155f4b]" role="status">
+          <span>{liveNotice}</span>
+          <button aria-label="Dismiss" className="rounded-md px-2 py-1 text-xs font-black hover:bg-[#d9f2e7]" type="button" onClick={() => setLiveNotice("")}>×</button>
+        </div>
+      )}
       {!expanded ? <section className="nexo-composer rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
         <div className="nexo-composer-main">
           <Avatar name={user.name} src={user.avatar} size="md" />
@@ -3036,24 +3072,40 @@ function Composer({
       {myLive && (
         <section className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
           <div className="grid lg:grid-cols-[1fr_320px]">
-            <div className="bg-[#090b0b] p-4 text-white">
+            <div className="bg-[#090b0b] p-4 text-white sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
-                    <span className="size-2 rounded-full bg-white" />
+                  <p className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase tracking-wide shadow-lg shadow-red-950/30">
+                    <span className="size-2 animate-pulse rounded-full bg-white" />
                     Live
                   </p>
-                  <h2 className="mt-3 text-xl font-black">{myLive.title}</h2>
+                  <h2 className="mt-3 text-xl font-black tracking-tight">{myLive.title}</h2>
                   <p className="mt-1 text-xs text-white/60">
                     Started {new Date(myLive.startedAt).toLocaleTimeString()}
                   </p>
                 </div>
-                <button className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#111816]" type="button" onClick={() => void finishLive(myLive.id)}>
-                  Finalizar
+                <button
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#111816] transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
+                  disabled={endingLive}
+                  type="button"
+                  onClick={() => void finishLive(myLive.id)}
+                >
+                  {endingLive ? "Ending..." : "End live"}
                 </button>
               </div>
-              <div className="mt-4 grid aspect-video place-items-center rounded-2xl border border-white/10 bg-black text-sm font-bold text-white/50">
-                Live broadcast panel
+              <div className="relative mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
+                {cameraReady ? (
+                  <video ref={broadcastVideoRef} autoPlay className="aspect-video w-full object-cover" muted playsInline />
+                ) : myLive.latestFrameUrl ? (
+                  <img alt="Last live preview" className="aspect-video w-full object-cover" src={mediaSrc(myLive.latestFrameUrl)} />
+                ) : (
+                  <div className="grid aspect-video place-items-center px-8 text-center text-sm font-bold text-white/60">
+                    Reopen the live panel to connect your camera.
+                  </div>
+                )}
+                <div className="absolute bottom-3 left-3 rounded-lg bg-black/65 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                  {cameraReady ? "Camera connected" : "Preview unavailable"}
+                </div>
               </div>
             </div>
             <LiveChatPanel
@@ -3112,30 +3164,30 @@ function Composer({
                 </div>
                 <p className="mt-2 text-sm text-[#6d746f]">
                   {myLive
-                    ? "Manage your broadcast and chat in real time."
-                    : "Broadcast from your camera. The session is registered as an active live in the app."}
+                    ? "Your camera preview and chat stay active while this panel is open."
+                    : "Start your camera, choose a title, and begin your live with a replay saved when you end it."}
                 </p>
                 {myLive ? (
                   <div className="mt-5 rounded-2xl bg-red-50 p-4">
-                    <p className="text-xs font-black uppercase text-red-700">Transmitiendo</p>
+                    <p className="text-xs font-black uppercase text-red-700">Broadcasting</p>
                     <h3 className="mt-1 text-base font-black">{myLive.title}</h3>
                     <p className="mt-1 text-xs text-[#6d746f]">
                       Started {new Date(myLive.startedAt).toLocaleTimeString()}
                     </p>
                   </div>
                 ) : (
-                  <input className={`${inputClass} mt-5`} name="title" placeholder="Title del live" required />
+                  <input className={`${inputClass} mt-5`} name="title" placeholder="Give your live a title" required />
                 )}
                 {cameraError && <p className="mt-3 text-sm font-semibold text-red-700">{cameraError}</p>}
               </div>
 
               <div className="grid gap-2">
-                <button className={secondaryButtonClass} type="button" onClick={cameraReady ? stopCamera : enableCamera}>
-                  {cameraReady ? "Turn off camera" : "Turn on camera"}
-                </button>
+                {!myLive && <button className={secondaryButtonClass} type="button" onClick={cameraReady ? stopCamera : enableCamera}>
+                  {cameraReady ? "Camera ready" : "Turn on camera"}
+                </button>}
                 {myLive ? (
-                  <button className={primaryButtonClass} type="button" onClick={() => void finishLive(myLive.id)}>
-                    Finalizar live
+                  <button className={primaryButtonClass} disabled={endingLive} type="button" onClick={() => void finishLive(myLive.id)}>
+                    {endingLive ? "Ending live..." : "End live and save replay"}
                   </button>
                 ) : (
                   <button className={primaryButtonClass} disabled={!cameraReady || loading} type="submit">
@@ -4632,6 +4684,7 @@ function LivesPage({
   viewerId,
   onDelete,
   onEdit,
+  onLiveToken,
   onSendMessage,
 }: {
   lives: LiveSession[];
@@ -4640,6 +4693,7 @@ function LivesPage({
   viewerId: string;
   onDelete: (liveId: string) => void;
   onEdit: (live: LiveSession) => void;
+  onLiveToken: (id: string) => Promise<LiveKitConnection>;
   onSendMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -4676,6 +4730,7 @@ function LivesPage({
               viewerId={viewerId}
               onDelete={onDelete}
               onEdit={onEdit}
+              onLiveToken={onLiveToken}
               onSendMessage={onSendMessage}
             />
           ))}
@@ -4710,6 +4765,54 @@ function PageHeader({
   );
 }
 
+function LiveKitPlayer({ live, onLiveToken }: { live: LiveSession; onLiveToken: (id: string) => Promise<LiveKitConnection> }) {
+  const [joined, setJoined] = useState(false);
+  const [error, setError] = useState("");
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!joined) {
+      return;
+    }
+
+    const room = new Room({ adaptiveStream: true, dynacast: true });
+    const attachTrack = (track: Track) => {
+      const element = track.attach();
+      element.autoplay = true;
+      if (element instanceof HTMLVideoElement) {
+        element.playsInline = true;
+      }
+      if (track.kind === Track.Kind.Audio) {
+        element.className = "hidden";
+      } else {
+        element.className = "size-full object-cover";
+      }
+      playerRef.current?.appendChild(element);
+    };
+
+    room.on(RoomEvent.TrackSubscribed, attachTrack);
+    void onLiveToken(live.id)
+      .then(async (connection) => {
+        await room.connect(connection.url, connection.token);
+      })
+      .catch(() => setError("Could not join this live. Please try again."));
+
+    return () => {
+      room.disconnect();
+      playerRef.current?.replaceChildren();
+    };
+  }, [joined, live.id, onLiveToken]);
+
+  if (!joined) {
+    return <button className="grid aspect-video w-full place-items-center rounded-xl bg-[#17211f] text-sm font-black text-white transition hover:bg-[#253531]" type="button" onClick={() => setJoined(true)}>Watch live</button>;
+  }
+
+  return <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
+    <div ref={playerRef} className="size-full" />
+    {error && <div className="absolute inset-0 grid place-items-center bg-black/80 p-5 text-center text-sm font-semibold text-white">{error}</div>}
+  </div>;
+}
+
 function LiveCard({
   live,
   messages = [],
@@ -4717,6 +4820,7 @@ function LiveCard({
   viewerId,
   onDelete,
   onEdit,
+  onLiveToken,
   onSendMessage,
 }: {
   live: LiveSession;
@@ -4725,6 +4829,7 @@ function LiveCard({
   viewerId?: string;
   onDelete?: (liveId: string) => void;
   onEdit?: (live: LiveSession) => void;
+  onLiveToken?: (id: string) => Promise<LiveKitConnection>;
   onSendMessage?: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
 }) {
   const canManage = viewerId === live.hostId;
@@ -4763,7 +4868,9 @@ function LiveCard({
           </span>
         </div>
       </div>
-      {live.recordingUrl ? (
+      {live.status === "LIVE" && onLiveToken ? (
+        <LiveKitPlayer live={live} onLiveToken={onLiveToken} />
+      ) : live.recordingUrl ? (
         <video
           className="aspect-video w-full rounded-xl bg-black object-contain"
           controls
@@ -4814,7 +4921,7 @@ function LiveChatPanel({
   return (
     <section className={compact ? "" : "flex h-full min-h-[360px] flex-col bg-[#f8faf9]"}>
       <div className={compact ? "mb-2 flex items-center justify-between" : "border-b border-[#e4e6eb] p-4"}>
-        <h3 className="text-sm font-black text-[#050505]">Chat en vivo</h3>
+        <h3 className="text-sm font-black text-[#050505]">Live chat</h3>
         <p className="text-xs font-semibold text-[#65676b]">{messages.length} messages</p>
       </div>
       <div className={`${compact ? "max-h-44" : "min-h-0 flex-1"} space-y-3 overflow-y-auto ${compact ? "" : "p-4"}`}>
@@ -4846,7 +4953,7 @@ function LiveChatPanel({
           <input
             className="min-w-0 flex-1 rounded-full border border-[#ccd0d5] bg-white px-4 py-2 text-sm outline-none focus:border-[#1877f2]"
             name="message"
-            placeholder="Escribe en el chat..."
+            placeholder="Write a message..."
           />
           <button className="rounded-full bg-[#1877f2] px-4 py-2 text-sm font-black text-white" type="submit">
             Send
@@ -5106,6 +5213,7 @@ function ProfilePage({
   onDeletePost,
   onEditLive,
   onEditPost,
+  onLiveToken,
   onOpenProfile,
   onSendLiveMessage,
   posts,
@@ -5123,6 +5231,7 @@ function ProfilePage({
   onDeletePost: (postId: string) => void;
   onEditLive: (live: LiveSession) => void;
   onEditPost: (post: Post) => void;
+  onLiveToken: (id: string) => Promise<LiveKitConnection>;
   onOpenProfile: (userId: string) => void;
   onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
   posts: Post[];
@@ -5333,6 +5442,7 @@ function ProfilePage({
                 viewerId={session.user.id}
                 onDelete={onDeleteLive}
                 onEdit={onEditLive}
+                onLiveToken={onLiveToken}
                 onSendMessage={onSendLiveMessage}
               />
             ))
@@ -5349,6 +5459,7 @@ function PublicProfilePage({
   viewerId,
   onAddFriend,
   onBlock,
+  onLiveToken,
   onOpenProfile,
   onSendLiveMessage,
 }: {
@@ -5357,6 +5468,7 @@ function PublicProfilePage({
   viewerId: string;
   onAddFriend: (userId: string) => void;
   onBlock: (userId: string) => void;
+  onLiveToken: (id: string) => Promise<LiveKitConnection>;
   onOpenProfile: (userId: string) => void;
   onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
 }) {
@@ -5423,6 +5535,7 @@ function PublicProfilePage({
               messages={liveMessages[live.id] ?? []}
               onOpenProfile={onOpenProfile}
               viewerId={viewerId}
+              onLiveToken={onLiveToken}
               onSendMessage={onSendLiveMessage}
             />
           ))}

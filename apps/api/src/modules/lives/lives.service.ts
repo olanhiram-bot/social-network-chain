@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { AccessToken } from 'livekit-server-sdk';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { storeMedia } from '../media/media-storage';
@@ -129,6 +130,47 @@ export class LivesService {
     return { ended: true };
   }
 
+  async token(accessToken: string, id: string) {
+    const payload = this.verifyAccessToken(accessToken);
+    const [live] = await this.prisma.$queryRaw<
+      { id: string; hostId: string; hostName: string; status: 'LIVE' | 'ENDED' }[]
+    >`
+      SELECT l."id", l."hostId", u."name" AS "hostName", l."status"
+      FROM "LiveSession" l
+      JOIN "User" u ON u."id" = l."hostId"
+      WHERE l."id" = ${id}
+      LIMIT 1
+    `;
+
+    if (!live || live.status !== 'LIVE') {
+      throw new UnprocessableEntityException('Live session is not active');
+    }
+
+    const url = process.env.LIVEKIT_URL;
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    if (!url || !apiKey || !apiSecret) {
+      throw new UnprocessableEntityException('Live streaming is not configured');
+    }
+
+    const canPublish = live.hostId === payload.sub;
+    const roomName = `live-${live.id}`;
+    const token = new AccessToken(apiKey, apiSecret, {
+      identity: `${canPublish ? 'host' : 'viewer'}-${payload.sub}-${randomUUID()}`,
+      name: canPublish ? live.hostName : payload.email,
+      ttl: '15m',
+    });
+    token.addGrant({
+      roomJoin: true,
+      room: roomName,
+      canPublish,
+      canPublishData: canPublish,
+      canSubscribe: true,
+    });
+
+    return { url, roomName, token: await token.toJwt(), canPublish };
+  }
+
   async uploadFrame(accessToken: string, id: string, file: { buffer: Buffer; mimetype: string }) {
     const payload = this.verifyAccessToken(accessToken);
 
@@ -185,10 +227,11 @@ export class LivesService {
       throw new UnprocessableEntityException('Live session not found');
     }
 
-    const offsetMs = Math.max(
-      0,
-      (live.endedAt?.getTime() ?? Date.now()) - live.startedAt.getTime(),
-    );
+    if (live.endedAt) {
+      throw new UnprocessableEntityException('Live session has ended');
+    }
+
+    const offsetMs = Math.max(0, Date.now() - live.startedAt.getTime());
     const messageId = randomUUID();
     await this.signing.signAction(payload.sub, 'COMMENT_LIVE', 'LiveSession', id, {
       content: cleanContent,
