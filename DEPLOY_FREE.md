@@ -20,6 +20,8 @@ Create a public storage bucket named:
 social-media
 ```
 
+The bucket must be **public**. The API returns its public URL directly, so media remains available after Render restarts or deploys.
+
 Copy these values:
 
 ```txt

@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Res,
+  ServiceUnavailableException,
   UnauthorizedException,
   UnprocessableEntityException,
   UploadedFile,
@@ -15,7 +16,7 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nes
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
-import { localMediaPath, publicMediaUrl, remoteMediaUrl, storeMedia } from './media-storage';
+import { hasPersistentMediaStorage, localMediaPath, remoteMediaUrl, storeMedia } from './media-storage';
 
 @ApiTags('media')
 @Controller('media')
@@ -33,6 +34,10 @@ export class MediaController {
   )
   async upload(@Headers('authorization') authorization: string | undefined, @UploadedFile() file: any) {
     this.bearer(authorization);
+
+    if (process.env.NODE_ENV === 'production' && !hasPersistentMediaStorage()) {
+      throw new ServiceUnavailableException('Media storage is not configured');
+    }
 
     if (!file?.buffer || !['image/', 'video/'].some((type) => file.mimetype.startsWith(type))) {
       throw new UnprocessableEntityException('Only image and video uploads are supported');

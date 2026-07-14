@@ -13,12 +13,23 @@ export function localMediaPath(filename: string) {
   return join(uploadDir, filename);
 }
 
+export function hasPersistentMediaStorage() {
+  return Boolean(
+    process.env.SUPABASE_URL
+    && process.env.SUPABASE_SERVICE_ROLE_KEY
+    && process.env.SUPABASE_STORAGE_BUCKET,
+  );
+}
+
 export async function storeMedia(filename: string, buffer: Buffer, contentType: string) {
   const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET;
 
   if (!supabaseUrl || !serviceRoleKey || !bucket) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Persistent media storage is not configured');
+    }
     await writeFile(localMediaPath(filename), buffer);
     return publicMediaUrl(filename);
   }
@@ -38,7 +49,7 @@ export async function storeMedia(filename: string, buffer: Buffer, contentType: 
     throw new Error(`Supabase storage upload failed: ${response.status}`);
   }
 
-  return publicMediaUrl(filename);
+  return remoteMediaUrl(filename)!;
 }
 
 export function remoteMediaUrl(filename: string) {
