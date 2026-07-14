@@ -12,6 +12,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 import { isAddress, padHex, zeroAddress, type Address } from "viem";
 import {
   useAccount,
@@ -2443,59 +2444,53 @@ function Stories({
 
   return (
     <section className="nexo-stories rounded-2xl border border-[#ded7c9] bg-white p-4 shadow-sm">
-      {creating && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-[#17211f]/75 px-4 backdrop-blur-sm">
+      {creating && createPortal(
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-[#17211f]/75 px-4 backdrop-blur-sm">
           <form
-            className="grid max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl md:grid-cols-[320px_1fr]"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl"
             onSubmit={(event) => {
               void onSubmit(event);
               closeCreate();
             }}
           >
-            <aside className="border-b border-[#ded7c9] p-5 md:border-b-0 md:border-r">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">Create story</h2>
-                <button className={secondaryButtonClass} type="button" onClick={closeCreate}>
-                  Close
-                </button>
-              </div>
-              <div className="mt-5 grid gap-3">
-                <input
-                  accept="image/*,video/*"
-                  className={inputClass}
-                  name="mediaFile"
-                  onChange={previewFile}
-                  required
-                  type="file"
-                />
-                <input
-                  className={inputClass}
-                  name="caption"
-                  placeholder={`Text for your story, ${user.name}`}
-                />
-              </div>
-              <button className={`${primaryButtonClass} mt-5 w-full`} disabled={!draftPreview || loading} type="submit">
-                {loading ? "Publishing..." : "Share to story"}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black">Create story</h2>
+              <button className={secondaryButtonClass} type="button" onClick={closeCreate}>
+                Close
               </button>
-            </aside>
-
-            <div className="grid min-h-[520px] place-items-center bg-[#111816] p-6">
-              <div className="relative h-[480px] w-full max-w-[270px] overflow-hidden rounded-2xl bg-black shadow-2xl">
-                {draftPreview ? (
-                  draftType === "VIDEO" ? (
+            </div>
+            <div className="mt-5 grid gap-3">
+              <input
+                accept="image/*,video/*"
+                className={inputClass}
+                name="mediaFile"
+                onChange={previewFile}
+                required
+                type="file"
+              />
+              <input
+                className={inputClass}
+                name="caption"
+                placeholder={`Text for your story, ${user.name}`}
+              />
+            </div>
+            {draftPreview && (
+              <div className="mt-5 overflow-hidden rounded-2xl bg-[#111816]">
+                <div className="relative mx-auto aspect-[9/14] max-h-[52vh] max-w-[270px] overflow-hidden bg-black">
+                  {draftType === "VIDEO" ? (
                     <video className="size-full object-cover" controls src={draftPreview} />
                   ) : (
-                    <img alt="" className="size-full object-cover" src={draftPreview} />
-                  )
-                ) : (
-                  <div className="grid size-full place-items-center px-8 text-center text-sm font-bold text-white/60">
-                    Select a photo or video to preview.
-                  </div>
-                )}
+                    <img alt="Story preview" className="size-full object-cover" src={draftPreview} />
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+            <button className={`${primaryButtonClass} mt-5 w-full`} disabled={!draftPreview || loading} type="submit">
+              {loading ? "Publishing..." : "Share to story"}
+            </button>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <div className="nexo-story-row">
