@@ -2020,6 +2020,7 @@ export default function Page() {
 
   return (
     <main className="nexo-app text-[#17211f]">
+      <InstallNexo />
       <TopBar
         notifications={notifications}
         user={session.user}
@@ -2396,6 +2397,17 @@ function MobileDock({ view, onNavigate }: { view: AppView; onNavigate: (view: Ap
       </nav>
     </>
   );
+}
+
+function InstallNexo() {
+  const [deferredPrompt, setDeferredPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
+  useEffect(() => {
+    const capture = (event: Event) => { event.preventDefault(); setDeferredPrompt(event as Event & { prompt: () => Promise<void> }); };
+    window.addEventListener("beforeinstallprompt", capture);
+    return () => window.removeEventListener("beforeinstallprompt", capture);
+  }, []);
+  if (!deferredPrompt) return null;
+  return <button className="fixed bottom-24 right-4 z-50 rounded-full bg-[var(--signal)] px-4 py-2 text-xs font-black text-[var(--auth-deep)] shadow-lg sm:bottom-5" onClick={() => { void deferredPrompt.prompt(); setDeferredPrompt(null); }} type="button">Install Nexo</button>;
 }
 
 function TopBar({
