@@ -5,7 +5,7 @@ import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { sepolia } from "@reown/appkit/networks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { WagmiProvider } from "wagmi";
+import { createStorage, WagmiProvider } from "wagmi";
 
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 const appUrl =
@@ -22,6 +22,8 @@ const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks,
   ssr: true,
+  storage: createStorage({ key: "nexo-wagmi-sepolia" }),
+  syncConnectedChain: true,
 });
 
 export const appKit = createAppKit({

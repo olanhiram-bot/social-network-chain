@@ -797,7 +797,13 @@ export default function Page() {
   }, [sessionSnapshot]);
 
   useEffect(() => {
-    if (!isConnected || !address || !chainId || session || walletSyncStarted.current) {
+    if (
+      !isConnected ||
+      !address ||
+      chainId !== SEPOLIA_CHAIN_ID ||
+      session ||
+      walletSyncStarted.current
+    ) {
       return;
     }
 
@@ -5386,6 +5392,9 @@ function AuthForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   walletLoading: boolean;
 }) {
+  const { chainId, isConnected } = useAccount();
+  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
+
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <div className={walletLoading ? "pointer-events-none opacity-60" : ""}>
@@ -5399,6 +5408,16 @@ function AuthForm({
       </div>
       {walletLoading && (
         <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
+      )}
+      {isConnected && chainId !== SEPOLIA_CHAIN_ID && (
+        <button
+          className="w-full whitespace-nowrap rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--accent-strong)] transition-[transform,background-color] duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px hover:bg-[var(--surface-muted)] active:translate-y-0"
+          disabled={switchingChain}
+          type="button"
+          onClick={() => void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => undefined)}
+        >
+          {switchingChain ? "Switching to Sepolia..." : "Switch to Ethereum Sepolia"}
+        </button>
       )}
       <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[var(--auth-panel-muted)]">
         <span className="h-px flex-1 bg-[var(--rule)]" />
