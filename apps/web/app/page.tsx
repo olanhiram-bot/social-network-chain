@@ -2444,6 +2444,9 @@ function Stories({
   const activeStories = stories.filter((story) => isActiveStory(story, now));
   const activePreviewStory =
     previewStory && isActiveStory(previewStory, now) ? previewStory : null;
+  const activePreviewIndex = activePreviewStory
+    ? activeStories.findIndex((story) => story.id === activePreviewStory.id)
+    : -1;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -2575,14 +2578,25 @@ function Stories({
         ))}
       </div>
 
-      {activePreviewStory && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-[#111816]/90 px-4">
+      {activePreviewStory && createPortal(
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-[#111816]/90 px-4">
+          {activePreviewIndex > 0 && (
+            <button
+              aria-label="Previous story"
+              className="absolute left-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:left-8"
+              onClick={() => setPreviewStory(activeStories[activePreviewIndex - 1])}
+              type="button"
+            >
+              ‹
+            </button>
+          )}
           <button
-            className="absolute left-5 top-5 rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
+            aria-label="Close story"
+            className="absolute right-5 top-5 grid size-11 place-items-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/25"
             onClick={() => setPreviewStory(null)}
             type="button"
           >
-            Close
+            ×
           </button>
           <div className="relative h-[86vh] w-full max-w-[430px] overflow-hidden rounded-2xl bg-black shadow-2xl">
             {activePreviewStory.mediaType === "VIDEO" ? (
@@ -2607,7 +2621,18 @@ function Stories({
               </p>
             )}
           </div>
-        </div>
+          {activePreviewIndex >= 0 && activePreviewIndex < activeStories.length - 1 && (
+            <button
+              aria-label="Next story"
+              className="absolute right-3 grid size-11 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/25 sm:right-8"
+              onClick={() => setPreviewStory(activeStories[activePreviewIndex + 1])}
+              type="button"
+            >
+              ›
+            </button>
+          )}
+        </div>,
+        document.body,
       )}
     </section>
   );
