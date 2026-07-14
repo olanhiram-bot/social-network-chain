@@ -3626,7 +3626,7 @@ function FriendSuggestionCard({ onAdd, onOpenProfile, user }: { onAdd: (userId: 
   return (
     <article className="flex !rounded-none !shadow-none items-center gap-3 border-b border-[#e4e6eb] bg-white py-2 sm:block sm:!rounded-xl sm:overflow-hidden sm:border-[#ded7c9] sm:p-0 sm:!shadow-sm">
       <button aria-label={`Open ${user.name}'s profile`} className="size-16 shrink-0 overflow-hidden rounded-full bg-[#eceff3] sm:block sm:aspect-square sm:size-auto sm:w-full sm:rounded-none" type="button" onClick={() => onOpenProfile(user.id)}>
-        {user.avatar ? <img alt="" className="size-full object-cover" src={mediaSrc(user.avatar)} /> : <span className="grid size-full place-items-center bg-[#17211f] text-2xl font-black text-[#f2c166]">{user.name.slice(0, 1).toUpperCase()}</span>}
+        <Avatar name={user.name} src={user.avatar} size="xl" />
       </button>
       <div className="min-w-0 flex-1 sm:p-3">
         <button className="block w-full truncate text-left text-base font-black text-[#17211f] hover:underline" type="button" onClick={() => onOpenProfile(user.id)}>{user.name}</button>
@@ -5902,12 +5902,13 @@ function Avatar({
 }: {
   name: string;
   src?: string | null;
-  size: "sm" | "md" | "lg";
+  size: "sm" | "md" | "lg" | "xl";
 }) {
   const sizeClass = {
     sm: "size-9 text-sm",
     md: "size-10 text-sm",
     lg: "size-28 border-4 border-white text-4xl",
+    xl: "size-16 text-xl",
   }[size];
 
   if (src) {

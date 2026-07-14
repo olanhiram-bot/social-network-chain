@@ -11,6 +11,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
@@ -21,6 +22,8 @@ import { hasPersistentMediaStorage, localMediaPath, remoteMediaUrl, storeMedia }
 @ApiTags('media')
 @Controller('media')
 export class MediaController {
+  constructor(private readonly jwt: JwtService) {}
+
   @Post()
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -67,6 +70,12 @@ export class MediaController {
 
     if (type !== 'Bearer' || !token) {
       throw new UnauthorizedException('Missing bearer token');
+    }
+
+    try {
+      this.jwt.verify(token);
+    } catch {
+      throw new UnauthorizedException('Invalid access token');
     }
 
     return token;

@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, UnprocessableEntityException } from 
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { publicMediaUrl, storeMedia } from '../media/media-storage';
+import { storeMedia } from '../media/media-storage';
 import { SigningService } from '../wallets/signing.service';
 
 type AccessPayload = {
@@ -147,9 +147,7 @@ export class LivesService {
     }
 
     const filename = `live-frame-${id.replace(/[^a-zA-Z0-9-]/g, '')}.jpg`;
-    await storeMedia(filename, file.buffer, file.mimetype);
-
-    const frameUrl = `${publicMediaUrl(filename)}?t=${Date.now()}`;
+    const frameUrl = `${await storeMedia(filename, file.buffer, file.mimetype)}?t=${Date.now()}`;
     await this.prisma.$executeRaw`
       UPDATE "LiveSession" SET "latestFrameUrl" = ${frameUrl}, "updatedAt" = NOW()
       WHERE "id" = ${id}
