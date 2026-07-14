@@ -1770,7 +1770,7 @@ export default function Page() {
 
   if (!session) {
     return (
-      <main className="nexo-app grid min-h-screen overflow-hidden bg-[#071a32] text-white">
+      <main className="grid min-h-screen overflow-hidden bg-[#071a32] text-white">
         <div className="mx-auto grid min-h-screen w-full max-w-[1400px] md:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
           <section className="flex min-h-full flex-col p-8 md:p-16" aria-labelledby="nexo-auth-title">
             <div className="inline-flex items-center gap-3 text-lg font-black tracking-tight" aria-label="Nexo">
