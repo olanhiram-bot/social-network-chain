@@ -5892,12 +5892,30 @@ function Avatar({
     );
   }
 
+  const seed = Array.from(name).reduce(
+    (value, character) => Math.imul(value ^ character.charCodeAt(0), 16777619),
+    2166136261,
+  ) >>> 0;
+  const accents = ["#51d7ad", "#77a8ff", "#f2c166", "#d985f6", "#fb8d6a"];
+  const accent = accents[seed % accents.length];
+  const cells = [0, 1, 2, 3, 4, 5].filter((index) => (seed >>> index) & 1);
+
   return (
-    <div
-      className={`${sizeClass} grid shrink-0 place-items-center rounded-xl bg-[#17211f] font-bold text-[#f2c166]`}
+    <svg
+      aria-label={`${name} default avatar`}
+      className={`${sizeClass} shrink-0 rounded-xl`}
+      role="img"
+      viewBox="0 0 48 48"
     >
-      {name.slice(0, 1).toUpperCase()}
-    </div>
+      <rect fill="#17211f" height="48" rx="12" width="48" />
+      <circle cx="24" cy="24" fill={accent} opacity="0.16" r="16" />
+      {cells.map((cell) => {
+        const x = 12 + (cell % 3) * 10;
+        const y = 12 + Math.floor(cell / 3) * 16;
+        return <rect fill={accent} height="8" key={cell} rx="3" width="8" x={x} y={y} />;
+      })}
+      <circle cx="24" cy="24" fill="#17211f" r="4" />
+    </svg>
   );
 }
 
