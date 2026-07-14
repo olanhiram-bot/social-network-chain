@@ -461,9 +461,11 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const walletSyncStarted = useRef(false);
+  const walletChainSwitchStarted = useRef(false);
   const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
+  const { switchChainAsync } = useSwitchChain();
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -796,6 +798,23 @@ export default function Page() {
 
     return () => window.clearInterval(id);
   }, [sessionSnapshot]);
+
+  useEffect(() => {
+    if (!isConnected || chainId === SEPOLIA_CHAIN_ID) {
+      walletChainSwitchStarted.current = false;
+      return;
+    }
+
+    if (walletChainSwitchStarted.current) {
+      return;
+    }
+
+    walletChainSwitchStarted.current = true;
+    void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => {
+      walletChainSwitchStarted.current = false;
+      setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet.");
+    });
+  }, [chainId, isConnected, switchChainAsync]);
 
   useEffect(() => {
     if (
