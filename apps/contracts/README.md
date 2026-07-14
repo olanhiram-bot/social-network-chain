@@ -10,7 +10,6 @@ Deploy requires:
 
 ```bash
 SEPOLIA_RPC_URL=... DEPLOYER_PRIVATE_KEY=... pnpm --filter contracts deploy:sepolia
-ARBITRUM_SEPOLIA_RPC_URL=... DEPLOYER_PRIVATE_KEY=... pnpm --filter contracts deploy:arbitrum-sepolia
 ```
 
 No private keys should be committed.

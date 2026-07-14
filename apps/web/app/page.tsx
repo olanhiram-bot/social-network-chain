@@ -467,7 +467,7 @@ export default function Page() {
   const { address, chainId, connector, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
-  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
+  const { switchChainAsync } = useSwitchChain();
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -1847,9 +1847,6 @@ export default function Page() {
                   mode={mode}
                   onModeChange={setMode}
                   onSubmit={authenticate}
-                  onSwitchToSepolia={() => void ensureWalletOnSepolia().catch(() => setError("Nexo needs Ethereum Sepolia. Approve the network switch in your wallet."))}
-                  switchingChain={switchingChain}
-                  wrongChain={isConnected && !walletOnSepolia}
                   walletLoading={walletLoading}
                 />
               </div>
@@ -4761,7 +4758,6 @@ function formatLiveOffset(offsetMs: number) {
 
 function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
   const { address, chainId } = useAccount();
-  const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
   const [txError, setTxError] = useState("");
   const idReady = Boolean(CONTRACTS.idRegistry);
   const keyReady = Boolean(CONTRACTS.keyRegistry);
@@ -4917,19 +4913,7 @@ function OnchainIdentity({ wallet }: { wallet: WalletAccount }) {
             Configure the missing Sepolia contracts to enable all onchain actions.
           </p>
         )}
-        {wrongChain && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p>Your wallet is connected to a different network. Nexo contracts use Ethereum Sepolia.</p>
-            <button
-              className={`${secondaryButtonClass} mt-2 w-full`}
-              disabled={switchingChain}
-              type="button"
-              onClick={() => void switchChainAsync({ chainId: SEPOLIA_CHAIN_ID }).catch(() => setTxError("Switch your wallet to Ethereum Sepolia and try again."))}
-            >
-              {switchingChain ? "Switching..." : "Switch to Sepolia"}
-            </button>
-          </div>
-        )}
+        {wrongChain && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Switching your wallet to Ethereum Sepolia...</p>}
         {txError && (
           <p className="rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-semibold text-red-700">
             {txError}
@@ -5416,9 +5400,6 @@ function AuthForm({
   mode,
   onModeChange,
   onSubmit,
-  onSwitchToSepolia,
-  switchingChain,
-  wrongChain,
   walletLoading,
 }: {
   error: string;
@@ -5426,9 +5407,6 @@ function AuthForm({
   mode: "login" | "register";
   onModeChange: (mode: "login" | "register") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onSwitchToSepolia: () => void;
-  switchingChain: boolean;
-  wrongChain: boolean;
   walletLoading: boolean;
 }) {
   return (
@@ -5444,16 +5422,6 @@ function AuthForm({
       </div>
       {walletLoading && (
         <p className="text-center text-sm text-[#6d746f]">Signing in...</p>
-      )}
-      {wrongChain && (
-        <button
-          className="w-full whitespace-nowrap rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-bold text-[var(--accent-strong)] transition-[transform,background-color] duration-200 [transition-timing-function:var(--ease-out)] hover:-translate-y-px hover:bg-[var(--surface-muted)] active:translate-y-0"
-          disabled={switchingChain}
-          type="button"
-          onClick={onSwitchToSepolia}
-        >
-          {switchingChain ? "Switching to Sepolia..." : "Switch to Ethereum Sepolia"}
-        </button>
       )}
       <div className="flex items-center gap-3 text-xs font-semibold uppercase text-[var(--auth-panel-muted)]">
         <span className="h-px flex-1 bg-[var(--rule)]" />
