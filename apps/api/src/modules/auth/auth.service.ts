@@ -34,6 +34,7 @@ type PublicUser = {
   avatar: string | null;
   cover: string | null;
   bio: string | null;
+  profileVisibility: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -198,7 +199,7 @@ export class AuthService {
   async me(accessToken: string) {
     const payload = this.verifyAccessToken(accessToken);
     const [user] = await this.prisma.$queryRaw<PublicUser[]>`
-      SELECT "id", "name", "email", "avatar", "cover", "bio", "createdAt", "updatedAt"
+      SELECT "id", "name", "email", "avatar", "cover", "bio", "profileVisibility", "createdAt", "updatedAt"
       FROM "User"
       WHERE "id" = ${payload.sub}
       LIMIT 1
@@ -213,7 +214,7 @@ export class AuthService {
 
   async updateMe(
     accessToken: string,
-    data: { name?: string; avatar?: string | null; cover?: string | null; bio?: string | null },
+    data: { name?: string; avatar?: string | null; cover?: string | null; bio?: string | null; profileVisibility?: string },
   ) {
     const payload = this.verifyAccessToken(accessToken);
     const [user] = await this.prisma.$queryRaw<PublicUser[]>`
@@ -222,10 +223,10 @@ export class AuthService {
         "name" = ${data.name?.trim() || 'Usuario'},
         "avatar" = ${data.avatar ?? null},
         "cover" = ${data.cover ?? null},
-        "bio" = ${data.bio ?? null},
+        "bio" = ${data.bio ?? null}, "profileVisibility" = ${data.profileVisibility === 'FRIENDS' ? 'FRIENDS' : 'PUBLIC'},
         "updatedAt" = NOW()
       WHERE "id" = ${payload.sub}
-      RETURNING "id", "name", "email", "avatar", "cover", "bio", "createdAt", "updatedAt"
+      RETURNING "id", "name", "email", "avatar", "cover", "bio", "profileVisibility", "createdAt", "updatedAt"
     `;
 
     if (!user) {

@@ -8,8 +8,14 @@ class StartConversationDto {
 }
 
 class SendMessageDto {
-  @ApiProperty({ example: 'Hola' })
-  content: string;
+  @ApiProperty({ example: 'Hola', required: false })
+  content?: string;
+
+  @ApiProperty({ example: '/media/message.png', required: false })
+  mediaUrl?: string;
+
+  @ApiProperty({ example: 'IMAGE', enum: ['IMAGE', 'VIDEO'], required: false })
+  mediaType?: string;
 }
 
 @ApiTags('messages')
@@ -46,7 +52,14 @@ export class MessagesController {
     @Param('id') id: string,
     @Body() body: SendMessageDto,
   ) {
-    return this.messagesService.send(this.bearer(authorization), id, body.content);
+    return this.messagesService.send(this.bearer(authorization), id, body);
+  }
+
+  @Post('conversations/:id/typing')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Notify the other participant that I am typing' })
+  typing(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) {
+    return this.messagesService.typing(this.bearer(authorization), id);
   }
 
   private bearer(authorization?: string) {

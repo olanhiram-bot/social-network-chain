@@ -4,6 +4,7 @@ import { AccessToken } from 'livekit-server-sdk';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { storeMedia } from '../media/media-storage';
+import { RealtimeService } from '../realtime/realtime.service';
 import { SigningService } from '../wallets/signing.service';
 
 type AccessPayload = {
@@ -28,6 +29,7 @@ export class LivesService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private signing: SigningService,
+    private realtime: RealtimeService,
   ) {}
 
   list() {
@@ -105,6 +107,7 @@ export class LivesService {
       JOIN "User" u ON u."id" = l."hostId"
       WHERE l."id" = ${id}
     `;
+    this.realtime.publish('lives_updated', { liveId: id });
     return live;
   }
 
@@ -126,6 +129,8 @@ export class LivesService {
       SET "status" = 'ENDED', "endedAt" = NOW(), "recordingUrl" = ${recordingUrl ?? null}, "updatedAt" = NOW()
       WHERE "id" = ${id}
     `;
+
+    this.realtime.publish('lives_updated', { liveId: id });
 
     return { ended: true };
   }
@@ -272,6 +277,7 @@ export class LivesService {
     await this.prisma.$executeRaw`
       UPDATE "LiveSession" SET "title" = ${cleanTitle}, "updatedAt" = NOW() WHERE "id" = ${id}
     `;
+    this.realtime.publish('lives_updated', { liveId: id });
     return { updated: true };
   }
 
@@ -289,6 +295,7 @@ export class LivesService {
     await this.prisma.$executeRaw`
       DELETE FROM "LiveSession" WHERE "id" = ${id}
     `;
+    this.realtime.publish('lives_updated', { liveId: id });
     return { deleted: true };
   }
 

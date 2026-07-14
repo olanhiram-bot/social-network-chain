@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -16,6 +16,7 @@ model User {
   avatar                   String?
   cover                    String?
   bio                      String?
+  profileVisibility        String                    @default("PUBLIC")
   wallet                   Wallet?
   sessions                 Session[]
   passwordResetTokens      PasswordResetToken[]
@@ -30,7 +31,12 @@ model User {
   pageFollows              PageFollow[]
   ownedGroups              Group[]
   groupMemberships         GroupMember[]
+  groupJoinRequests        GroupJoinRequest[]
   marketplaceProducts      MarketplaceProduct[]
+  marketplaceSaved         MarketplaceSaved[]
+  postComments             PostComment[]
+  postReactions            PostReaction[]
+  signedActions            SignedAction[]
   blockedUsers             UserBlock[]               @relation("Blocker")
   blockedBy                UserBlock[]               @relation("Blocked")
   notifications            Notification[]
@@ -121,14 +127,30 @@ model MarketplaceProduct {
   priceCents  Int
   location    String
   imageUrl    String?
+  status      String   @default("ACTIVE")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  saves  MarketplaceSaved[]
 
   @@index([sellerId])
   @@index([category])
   @@index([createdAt])
+  @@index([status, createdAt])
+}
+
+model MarketplaceSaved {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  product MarketplaceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([userId, createdAt])
 }
 
 model Page {
@@ -176,6 +198,7 @@ model Group {
 
   owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members GroupMember[]
+  joinRequests GroupJoinRequest[]
   posts   Post[]
 
   @@index([ownerId])
@@ -195,6 +218,22 @@ model GroupMember {
 
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+model GroupJoinRequest {
+  id          String   @id @default(cuid())
+  groupId     String
+  requesterId String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  requester User  @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, requesterId])
+  @@index([groupId, status])
+  @@index([requesterId, status])
 }
 
 model Notification {
@@ -236,15 +275,17 @@ model ConversationParticipant {
 }
 
 model DirectMessage {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   conversationId String
   senderId       String
   content        String
+  mediaUrl       String?
+  mediaType      String?
   signerAddress  String?
   messageHash    String?
   signature      String?
   readAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -324,9 +365,11 @@ model Post {
   updatedAt     DateTime   @updatedAt
   deletedAt     DateTime?
 
-  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  page   Page?  @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  group  Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  page      Page?          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  group     Group?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  comments  PostComment[]
+  reactions PostReaction[]
 
   @@index([authorId])
   @@index([pageId])
@@ -336,6 +379,79 @@ model Post {
   @@index([deletedAt])
   @@index([createdAt])
   @@index([signerAddress])
+}
+
+model PostComment {
+  id            String   @id @default(cuid())
+  postId        String
+  authorId      String
+  content       String
+  signerAddress String
+  messageHash   String
+  signature     String
+  parentId      String?
+  createdAt     DateTime @default(now())
+
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("CommentReplies")
+
+  @@index([postId, createdAt])
+  @@index([parentId, createdAt])
+}
+
+model PostReaction {
+  id            String   @id @default(cuid())
+  postId        String
+  userId        String
+  reactionType  String   @default("LIKE")
+  signerAddress String
+  messageHash   String
+  signature     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+}
+
+model SignedAction {
+  id            String   @id @default(cuid())
+  actorId       String
+  actionType    String
+  resourceType  String
+  resourceId    String?
+  payload       Json
+  signerAddress String
+  messageHash   String
+  signature     String
+  createdAt     DateTime @default(now())
+
+  actor       User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  chainAnchor ChainAnchor?
+
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+}
+
+model ChainAnchor {
+  id              String   @id @default(cuid())
+  signedActionId  String   @unique
+  chainId         Int?
+  registryAddress String?
+  transactionHash String?
+  status          String   @default("PENDING")
+  error           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  signedAction SignedAction @relation(fields: [signedActionId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
 
 model Story {
@@ -351,7 +467,7 @@ model Story {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   views  StoryView[]
 
   @@index([authorId])

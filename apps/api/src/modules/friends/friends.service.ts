@@ -77,6 +77,10 @@ export class FriendsService {
       throw new NotFoundException('User not found');
     }
     await this.assertNotBlocked(viewerId, profileId);
+    if (user.profileVisibility === 'FRIENDS' && viewerId !== profileId) {
+      const friendship = await this.prisma.friendship.findUnique({ where: { userId_friendId: { userId: viewerId, friendId: profileId } } });
+      if (!friendship) throw new NotFoundException('User not found');
+    }
 
     const [friendship, pendingRequest, posts, lives] = await Promise.all([
       this.prisma.friendship.findUnique({
@@ -148,6 +152,7 @@ export class FriendsService {
                 ? 'REQUEST_SENT'
                 : 'REQUEST_RECEIVED'
               : 'NONE',
+      relationshipRequestId: pendingRequest?.id ?? null,
       posts: posts.map((post) => ({
         id: post.id,
         content: post.content,
@@ -317,6 +322,40 @@ export class FriendsService {
       { requesterId: request.requesterId },
     );
 
+    return { ok: true };
+  }
+
+  async cancel(accessToken: string, requestId: string) {
+    const userId = this.userId(accessToken);
+    const request = await this.prisma.friendRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.requesterId !== userId || request.status !== FriendRequestStatus.PENDING) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.prisma.friendRequest.delete({ where: { id: requestId } });
+    await this.signing.signAction(userId, 'CANCEL_FRIEND_REQUEST', 'FriendRequest', requestId, {
+      addresseeId: request.addresseeId,
+    });
+    return { ok: true };
+  }
+
+  async unfriend(accessToken: string, friendId: string) {
+    const userId = this.userId(accessToken);
+    if (userId === friendId) {
+      throw new UnprocessableEntityException('Cannot unfriend yourself');
+    }
+    const deleted = await this.prisma.friendship.deleteMany({
+      where: {
+        OR: [
+          { userId, friendId },
+          { userId: friendId, friendId: userId },
+        ],
+      },
+    });
+    if (!deleted.count) {
+      throw new NotFoundException('Friendship not found');
+    }
+    await this.signing.signAction(userId, 'UNFRIEND', 'User', friendId, {});
     return { ok: true };
   }
 

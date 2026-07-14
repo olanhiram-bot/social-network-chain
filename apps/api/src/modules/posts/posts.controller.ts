@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -36,6 +36,9 @@ class CreatePostDto {
 class CreateCommentDto {
   @ApiProperty({ example: 'Totalmente de acuerdo.' })
   content: string;
+
+  @ApiProperty({ example: 'parent-comment-id', required: false })
+  parentId?: string;
 }
 
 class UpdatePostDto {
@@ -72,6 +75,21 @@ export class PostsController {
     return this.postsService.list(this.optionalBearer(authorization));
   }
 
+  @Get('page')
+  @ApiOperation({ summary: 'List feed posts with a cursor' })
+  page(
+    @Headers('authorization') authorization?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = Number(limit);
+    return this.postsService.page(
+      this.optionalBearer(authorization),
+      cursor,
+      Number.isFinite(parsedLimit) ? parsedLimit : 15,
+    );
+  }
+
   @Get('reports')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List open content reports' })
@@ -106,7 +124,7 @@ export class PostsController {
     @Param('id') id: string,
     @Body() body: CreateCommentDto,
   ) {
-    return this.postsService.comment(this.bearer(authorization), id, body.content);
+    return this.postsService.comment(this.bearer(authorization), id, body.content, body.parentId);
   }
 
   @Patch('comments/:id')

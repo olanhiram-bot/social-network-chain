@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { MarketplaceService } from './marketplace.service';
 
@@ -22,6 +22,11 @@ class ProductDto {
   imageUrl?: string;
 }
 
+class ProductStatusDto {
+  @ApiProperty({ enum: ['ACTIVE', 'SOLD'] })
+  status: string;
+}
+
 @ApiTags('marketplace')
 @ApiBearerAuth()
 @Controller('marketplace')
@@ -38,6 +43,21 @@ export class MarketplaceController {
   @ApiOperation({ summary: 'Create marketplace product' })
   create(@Headers('authorization') authorization: string | undefined, @Body() body: ProductDto) {
     return this.marketplaceService.create(this.bearer(authorization), body);
+  }
+
+  @Patch(':id')
+  updateStatus(@Headers('authorization') authorization: string | undefined, @Param('id') id: string, @Body() body: ProductStatusDto) {
+    return this.marketplaceService.setStatus(this.bearer(authorization), id, body.status);
+  }
+
+  @Delete(':id')
+  remove(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) {
+    return this.marketplaceService.remove(this.bearer(authorization), id);
+  }
+
+  @Post(':id/save')
+  save(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) {
+    return this.marketplaceService.toggleSave(this.bearer(authorization), id);
   }
 
   private bearer(authorization?: string) {

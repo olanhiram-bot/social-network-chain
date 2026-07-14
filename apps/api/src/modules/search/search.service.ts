@@ -15,7 +15,7 @@ export class SearchService {
   ) {}
 
   async search(accessToken: string, query: string) {
-    this.userId(accessToken);
+    const userId = this.userId(accessToken);
     const q = query.trim();
     if (q.length < 2) {
       return { query: q, people: [], pages: [], groups: [], posts: [], lives: [] };
@@ -26,7 +26,12 @@ export class SearchService {
       this.prisma.$queryRaw`
         SELECT "id", "name", "avatar", "bio"
         FROM "User"
-        WHERE "name" ILIKE ${term} OR "email" ILIKE ${term}
+        WHERE "name" ILIKE ${term}
+          AND NOT EXISTS (
+            SELECT 1 FROM "UserBlock" b
+            WHERE (b."blockerId" = ${userId} AND b."blockedId" = "User"."id")
+               OR (b."blockerId" = "User"."id" AND b."blockedId" = ${userId})
+          )
         ORDER BY "name" ASC
         LIMIT 8
       `,
@@ -40,7 +45,14 @@ export class SearchService {
       this.prisma.$queryRaw`
         SELECT "id", "name", "description", "privacy", "cover"
         FROM "Group"
-        WHERE "name" ILIKE ${term} OR COALESCE("description", '') ILIKE ${term}
+        WHERE ("name" ILIKE ${term} OR COALESCE("description", '') ILIKE ${term})
+          AND (
+            "privacy" = 'PUBLIC'
+            OR EXISTS (
+              SELECT 1 FROM "GroupMember" m
+              WHERE m."groupId" = "Group"."id" AND m."userId" = ${userId}
+            )
+          )
         ORDER BY "createdAt" DESC
         LIMIT 8
       `,
@@ -50,6 +62,20 @@ export class SearchService {
         FROM "Post" p
         JOIN "User" u ON u."id" = p."authorId"
         WHERE p."content" ILIKE ${term}
+          AND p."deletedAt" IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "UserBlock" b
+            WHERE (b."blockerId" = ${userId} AND b."blockedId" = p."authorId")
+               OR (b."blockerId" = p."authorId" AND b."blockedId" = ${userId})
+          )
+          AND (
+            p."audience" = 'PUBLIC'
+            OR p."authorId" = ${userId}
+            OR (p."audience" = 'FRIENDS' AND EXISTS (
+              SELECT 1 FROM "Friendship" f
+              WHERE f."userId" = ${userId} AND f."friendId" = p."authorId"
+            ))
+          )
         ORDER BY p."createdAt" DESC
         LIMIT 8
       `,

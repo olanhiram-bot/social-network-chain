@@ -77,6 +77,9 @@ class UpdateMeDto {
     nullable: true,
   })
   bio?: string | null;
+
+  @ApiProperty({ enum: ['PUBLIC', 'FRIENDS'], required: false })
+  profileVisibility?: string;
 }
 
 @ApiTags('auth')

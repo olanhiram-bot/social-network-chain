@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -82,6 +83,24 @@ export class FriendsController {
     @Param('id') id: string,
   ) {
     return this.friendsService.reject(this.bearer(authorization), id);
+  }
+
+  @Delete('requests/:id')
+  @ApiOperation({ summary: 'Cancel my outgoing friend request' })
+  cancel(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.friendsService.cancel(this.bearer(authorization), id);
+  }
+
+  @Delete('users/:id')
+  @ApiOperation({ summary: 'Remove an existing friend' })
+  unfriend(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.friendsService.unfriend(this.bearer(authorization), id);
   }
 
   @Post('users/:id/block')

@@ -1,9 +1,11 @@
 import {
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { hashMessage, verifyMessage, Wallet as EvmWallet } from 'ethers';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -58,8 +60,13 @@ export class PostsService {
     private realtime: RealtimeService,
   ) {}
 
-  async list(accessToken?: string) {
+  async list(accessToken?: string, cursor?: string, limit = 50) {
     const viewerId = accessToken ? this.verifyAccessToken(accessToken).sub : undefined;
+    const before = cursor ? new Date(cursor) : null;
+    const cursorSql = before && !Number.isNaN(before.getTime())
+      ? Prisma.sql`AND p."createdAt" < ${before}`
+      : Prisma.empty;
+    const take = Math.min(Math.max(Math.trunc(limit), 1), 50);
     const posts = viewerId
       ? await this.prisma.$queryRaw<PostRow[]>`
         SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."metadata", p."audience", p."createdAt",
@@ -90,8 +97,17 @@ export class PostsService {
               SELECT 1 FROM "Friendship" f WHERE f."userId" = ${viewerId} AND f."friendId" = p."authorId"
             ))
           )
+          AND (
+            p."groupId" IS NULL
+            OR g."privacy" = 'PUBLIC'
+            OR EXISTS (
+              SELECT 1 FROM "GroupMember" group_member
+              WHERE group_member."groupId" = p."groupId" AND group_member."userId" = ${viewerId}
+            )
+          )
+          ${cursorSql}
         ORDER BY p."createdAt" DESC
-        LIMIT 50
+        LIMIT ${take}
       `
       : await this.prisma.$queryRaw<PostRow[]>`
         SELECT p."id", p."content", p."mediaUrl", p."mediaType", p."metadata", p."audience", p."createdAt",
@@ -111,16 +127,19 @@ export class PostsService {
         LEFT JOIN "User" su ON su."id" = sp."authorId"
         WHERE p."deletedAt" IS NULL
           AND p."audience" = 'PUBLIC'
+          AND (p."groupId" IS NULL OR g."privacy" = 'PUBLIC')
+          ${cursorSql}
         ORDER BY p."createdAt" DESC
-        LIMIT 50
+        LIMIT ${take}
       `;
     const postIds = posts.map((post) => post.id);
-    const [comments, reactionCounts, shareCounts, viewerReactions] = postIds.length
+    const [comments, reactionCounts, reactionBreakdown, shareCounts, viewerReactions] = postIds.length
       ? await Promise.all([
           this.prisma.$queryRaw<
             {
               id: string;
               postId: string;
+              parentId: string | null;
               content: string;
               createdAt: Date;
               signerAddress: string;
@@ -129,7 +148,7 @@ export class PostsService {
               authorAvatar: string | null;
             }[]
           >`
-            SELECT c."id", c."postId", c."content", c."createdAt", c."signerAddress",
+            SELECT c."id", c."postId", c."parentId", c."content", c."createdAt", c."signerAddress",
                    u."id" AS "authorId", u."name" AS "authorName", u."avatar" AS "authorAvatar"
             FROM "PostComment" c
             JOIN "User" u ON u."id" = c."authorId"
@@ -141,6 +160,12 @@ export class PostsService {
             FROM "PostReaction"
             WHERE "postId" = ANY(${postIds})
             GROUP BY "postId"
+          `,
+          this.prisma.$queryRaw<{ postId: string; reactionType: string; count: bigint }[]>`
+            SELECT "postId", "reactionType", COUNT(*) AS count
+            FROM "PostReaction"
+            WHERE "postId" = ANY(${postIds})
+            GROUP BY "postId", "reactionType"
           `,
           this.prisma.$queryRaw<{ sharedPostId: string; count: bigint }[]>`
             SELECT "sharedPostId", COUNT(*) AS count
@@ -156,7 +181,7 @@ export class PostsService {
               `
             : Promise.resolve([]),
         ])
-      : [[], [], [], []];
+      : [[], [], [], [], []];
     const viewerReactionTypes = new Map<string, string>(
       viewerReactions.map((reaction) => [reaction.postId, reaction.reactionType] as const),
     );
@@ -202,6 +227,9 @@ export class PostsService {
       reactionCount: Number(
         reactionCounts.find((reaction) => reaction.postId === post.id)?.count ?? 0,
       ),
+      reactionSummary: reactionBreakdown
+        .filter((reaction) => reaction.postId === post.id)
+        .map((reaction) => ({ type: reaction.reactionType, count: Number(reaction.count) })),
       commentCount: comments.filter((comment) => comment.postId === post.id).length,
       shareCount: Number(shareCounts.find((share) => share.sharedPostId === post.id)?.count ?? 0),
       reactedByMe: viewerReactionTypes.has(post.id),
@@ -211,6 +239,7 @@ export class PostsService {
         .slice(-3)
         .map((comment) => ({
           id: comment.id,
+          parentId: comment.parentId,
           content: comment.content,
           createdAt: comment.createdAt,
           signerAddress: comment.signerAddress,
@@ -221,6 +250,15 @@ export class PostsService {
           },
         })),
     }));
+  }
+
+  async page(accessToken: string | undefined, cursor?: string, limit = 15) {
+    const take = Math.min(Math.max(Math.trunc(limit), 1), 25);
+    const items = await this.list(accessToken, cursor, take);
+    return {
+      items,
+      nextCursor: items.length === take ? items.at(-1)?.createdAt ?? null : null,
+    };
   }
 
   async create(
@@ -395,6 +433,7 @@ export class PostsService {
       messageHash: post.messageHash,
       signature: post.signature,
       reactionCount: 0,
+      reactionSummary: [],
       commentCount: 0,
       shareCount: 0,
       reactedByMe: false,
@@ -459,7 +498,7 @@ export class PostsService {
     return { id, sharedPostId: postId };
   }
 
-  async comment(accessToken: string, postId: string, content: string) {
+  async comment(accessToken: string, postId: string, content: string, parentId?: string) {
     const trimmed = content.trim();
     if (!trimmed) {
       throw new UnprocessableEntityException('Comment content is required');
@@ -470,21 +509,30 @@ export class PostsService {
     if (!post) {
       throw new UnprocessableEntityException('Post not found');
     }
+    const cleanParentId = parentId?.trim() || null;
+    if (cleanParentId) {
+      const parent = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "PostComment" WHERE "id" = ${cleanParentId} AND "postId" = ${postId} LIMIT 1
+      `;
+      if (!parent[0]) {
+        throw new UnprocessableEntityException('Parent comment not found');
+      }
+    }
 
     const signed = await this.signing.signAction(
       payload.sub,
       'COMMENT_POST',
       'Post',
       postId,
-      { content: trimmed },
+      { content: trimmed, parentId: cleanParentId },
     );
     const id = randomUUID();
     await this.prisma.$executeRaw`
       INSERT INTO "PostComment" (
-        "id", "postId", "authorId", "content", "signerAddress", "messageHash", "signature"
+        "id", "postId", "authorId", "parentId", "content", "signerAddress", "messageHash", "signature"
       )
       VALUES (
-        ${id}, ${postId}, ${payload.sub}, ${trimmed}, ${signed.signerAddress},
+        ${id}, ${postId}, ${payload.sub}, ${cleanParentId}, ${trimmed}, ${signed.signerAddress},
         ${signed.messageHash}, ${signed.signature}
       )
     `;
@@ -564,11 +612,13 @@ export class PostsService {
 
   async delete(accessToken: string, postId: string) {
     const payload = this.verifyAccessToken(accessToken);
-    const [post] = await this.prisma.$queryRaw<{ id: string; authorId: string }[]>`
-      SELECT "id", "authorId" FROM "Post" WHERE "id" = ${postId} LIMIT 1
+    const [post] = await this.prisma.$queryRaw<{ id: string; authorId: string; groupId: string | null; canModerate: boolean }[]>`
+      SELECT p."id", p."authorId", p."groupId", EXISTS (
+        SELECT 1 FROM "Group" g WHERE g."id" = p."groupId" AND g."ownerId" = ${payload.sub}
+      ) AS "canModerate" FROM "Post" p WHERE p."id" = ${postId} LIMIT 1
     `;
 
-    if (!post || post.authorId !== payload.sub) {
+    if (!post || (post.authorId !== payload.sub && !post.canModerate)) {
       throw new UnprocessableEntityException('Post not found');
     }
 
@@ -659,7 +709,14 @@ export class PostsService {
   }
 
   async reports(accessToken: string) {
-    this.verifyAccessToken(accessToken);
+    const payload = this.verifyAccessToken(accessToken);
+    const moderators = (process.env.MODERATOR_EMAILS ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+    if (!moderators.includes(payload.email.toLowerCase())) {
+      throw new ForbiddenException('Moderator access is required');
+    }
     return this.prisma.$queryRaw`
       SELECT r."id", r."entityType", r."entityId", r."reason", r."status", r."createdAt",
              u."id" AS "reporterId", u."name" AS "reporterName"

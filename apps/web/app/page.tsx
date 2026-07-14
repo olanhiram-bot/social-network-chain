@@ -32,6 +32,7 @@ type User = {
   avatar: string | null;
   cover: string | null;
   bio: string | null;
+  profileVisibility?: "PUBLIC" | "FRIENDS";
 };
 
 type Session = {
@@ -70,17 +71,24 @@ type Post = {
     author: Pick<User, "id" | "name" | "avatar">;
   } | null;
   reactionCount: number;
+  reactionSummary: { type: string; count: number }[];
   reactionTypeByMe: "LIKE" | "LOVE" | "CARE" | "HAHA" | "WOW" | "SAD" | "ANGRY" | null;
   commentCount: number;
   shareCount: number;
   reactedByMe: boolean;
   comments: {
     id: string;
+    parentId: string | null;
     content: string;
     createdAt: string;
     signerAddress: string;
     author: Pick<User, "id" | "name" | "avatar">;
   }[];
+};
+
+type PostPage = {
+  items: Post[];
+  nextCursor: string | null;
 };
 
 type Story = {
@@ -164,6 +172,8 @@ type MarketplaceProduct = {
   priceCents: number;
   location: string;
   imageUrl: string | null;
+  status: "ACTIVE" | "SOLD";
+  savedByMe: boolean;
   createdAt: string;
   sellerId: string;
   sellerName: string;
@@ -192,6 +202,7 @@ type SocialEvent = {
 type PublicProfile = {
   user: User;
   relationship: "SELF" | "FRIEND" | "REQUEST_SENT" | "REQUEST_RECEIVED" | "NONE";
+  relationshipRequestId: string | null;
   posts: Post[];
   lives: LiveSession[];
 };
@@ -239,8 +250,18 @@ type SocialGroup = {
   ownerAvatar: string | null;
   memberCount: number;
   joinedByMe: boolean;
+  requestPendingByMe: boolean;
   myRole: string | null;
 };
+
+type GroupJoinRequest = {
+  id: string;
+  createdAt: string;
+  requesterId: string;
+  requesterName: string;
+  requesterAvatar: string | null;
+};
+type GroupMember = { userId: string; role: "ADMIN" | "MEMBER"; name: string; avatar: string | null };
 
 type Conversation = {
   id: string;
@@ -257,6 +278,8 @@ type DirectMessage = {
   id: string;
   conversationId: string;
   content: string;
+  mediaUrl: string | null;
+  mediaType: "IMAGE" | "VIDEO" | null;
   signerAddress: string | null;
   messageHash: string | null;
   signature: string | null;
@@ -454,6 +477,8 @@ export default function Page() {
     [sessionSnapshot],
   );
   const [posts, setPosts] = useState<Post[]>([]);
+  const [feedNextCursor, setFeedNextCursor] = useState<string | null>(null);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [stories, setStories] = useState<Story[]>([]);
   const [lives, setLives] = useState<LiveSession[]>([]);
   const [profileLives, setProfileLives] = useState<LiveSession[]>([]);
@@ -467,6 +492,7 @@ export default function Page() {
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState("");
+  const [typingConversationId, setTypingConversationId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     if (typeof window === "undefined") {
@@ -487,6 +513,8 @@ export default function Page() {
   const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [selectedPage, setSelectedPage] = useState<SocialPage | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<SocialGroup | null>(null);
+  const [groupJoinRequests, setGroupJoinRequests] = useState<GroupJoinRequest[]>([]);
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [view, setView] = useState<AppView>(() => {
     if (typeof window === "undefined") return "home";
     const hashView = window.location.hash.slice(1);
@@ -501,6 +529,8 @@ export default function Page() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [resetToken, setResetToken] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("reset") ?? "");
   const walletSyncStarted = useRef(false);
+  const typingSentAt = useRef(0);
+  const typingTimeout = useRef<number | null>(null);
   const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
@@ -625,6 +655,7 @@ export default function Page() {
       ]);
 
     setPosts(nextPosts);
+    setFeedNextCursor(null);
     setStories(nextStories);
     setLives(nextLives);
     setProfileLives(nextProfileLives);
@@ -643,6 +674,20 @@ export default function Page() {
     setRequests(nextRequests);
     setWallet(nextWallet);
     await refreshLiveMessages([...nextLives, ...nextProfileLives]);
+  }
+
+  async function loadMorePosts() {
+    if (!feedNextCursor || loadingMorePosts) return;
+    setLoadingMorePosts(true);
+    try {
+      const page = await authed<PostPage>(`/posts/page?limit=15&cursor=${encodeURIComponent(feedNextCursor)}`);
+      setPosts((current) => [...current, ...page.items.filter((post) => !current.some((item) => item.id === post.id))]);
+      setFeedNextCursor(page.nextCursor);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load more posts");
+    } finally {
+      setLoadingMorePosts(false);
+    }
   }
 
   async function refreshLiveMessages(nextLives: LiveSession[]) {
@@ -669,9 +714,9 @@ export default function Page() {
 
     async function loadSocialData() {
       try {
-        const [nextPosts, nextStories, nextLives, nextProfileLives, nextPages, nextMyPages, nextGroups, nextMyGroups, nextNotifications, nextConversations, nextProducts, nextEvents, nextSuggestions, nextFriends, nextRequests, nextWallet] =
+        const [feedPage, nextStories, nextLives, nextProfileLives, nextPages, nextMyPages, nextGroups, nextMyGroups, nextNotifications, nextConversations, nextProducts, nextEvents, nextSuggestions, nextFriends, nextRequests, nextWallet] =
           await Promise.all([
-          authed<Post[]>("/posts"),
+          authed<PostPage>("/posts/page?limit=15"),
             authed<Story[]>("/stories"),
             authed<LiveSession[]>("/lives"),
             authed<LiveSession[]>("/lives/mine"),
@@ -690,7 +735,8 @@ export default function Page() {
           ]);
 
         if (!cancelled) {
-          setPosts(nextPosts);
+          setPosts(feedPage.items);
+          setFeedNextCursor(feedPage.nextCursor);
           setStories(nextStories);
           setLives(nextLives);
           setProfileLives(nextProfileLives);
@@ -731,7 +777,7 @@ export default function Page() {
 
     const source = new EventSource(`${API_URL}/realtime?token=${encodeURIComponent(session.accessToken)}`);
     source.addEventListener("feed_updated", () => {
-      void authed<Post[]>("/posts").then(setPosts).catch(() => undefined);
+      void authed<PostPage>("/posts/page?limit=15").then((page) => { setPosts(page.items); setFeedNextCursor(page.nextCursor); }).catch(() => undefined);
     });
     source.addEventListener("pages_updated", () => {
       void Promise.all([authed<SocialPage[]>("/pages"), authed<SocialPage[]>("/pages/mine")])
@@ -762,80 +808,36 @@ export default function Page() {
           .catch(() => undefined);
       }
     });
+    source.addEventListener("message_typing", (event) => {
+      try {
+        const { conversationId } = JSON.parse((event as MessageEvent<string>).data) as { conversationId?: string };
+        if (!conversationId) return;
+        setTypingConversationId(conversationId);
+        if (typingTimeout.current) window.clearTimeout(typingTimeout.current);
+        typingTimeout.current = window.setTimeout(() => setTypingConversationId(null), 1800);
+      } catch {
+        // Ignore malformed transient presence events.
+      }
+    });
     source.addEventListener("events_updated", () => {
       void authed<SocialEvent[]>("/events").then(setEvents).catch(() => undefined);
+    });
+    source.addEventListener("lives_updated", () => {
+      void authed<LiveSession[]>("/lives").then(setLives).catch(() => undefined);
     });
 
     return () => source.close();
   }, [sessionSnapshot, activeConversation?.id]);
 
-  useEffect(() => {
-    if (!session || lives.length === 0) {
-      return;
+  async function notifyTyping() {
+    if (!activeConversation || Date.now() - typingSentAt.current < 900) return;
+    typingSentAt.current = Date.now();
+    try {
+      await authed(`/messages/conversations/${activeConversation.id}/typing`, { method: "POST" });
+    } catch {
+      // Presence is ephemeral and must not block composing a message.
     }
-
-    const id = window.setInterval(async () => {
-      try {
-        const nextLives = await authed<LiveSession[]>("/lives");
-        setLives(nextLives);
-      } catch {
-        // Keep the current live list if a polling request fails.
-      }
-    }, 5_000);
-
-    return () => window.clearInterval(id);
-  }, [sessionSnapshot, lives.length]);
-
-  useEffect(() => {
-    if (!session || view !== "messages") {
-      return;
-    }
-
-    const id = window.setInterval(async () => {
-      try {
-        setConversations(await authed<Conversation[]>("/messages/conversations"));
-        if (activeConversation) {
-          setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
-        }
-      } catch {
-        // Keep current messenger state if refresh fails.
-      }
-    }, 3000);
-
-    return () => window.clearInterval(id);
-  }, [sessionSnapshot, view, activeConversation?.id]);
-
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-
-    const id = window.setInterval(async () => {
-      try {
-        setPosts(await authed<Post[]>("/posts"));
-      } catch {
-        // Keep current feed if refresh fails.
-      }
-    }, 3000);
-
-    return () => window.clearInterval(id);
-  }, [sessionSnapshot]);
-
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-
-    const id = window.setInterval(async () => {
-      try {
-        setNotifications(await authed<NotificationState>("/notifications"));
-      } catch {
-        // Keep the current notification list if polling fails.
-      }
-    }, 10_000);
-
-    return () => window.clearInterval(id);
-  }, [sessionSnapshot]);
+  }
 
   useEffect(() => {
     if (
@@ -1227,6 +1229,33 @@ export default function Page() {
     }
   }
 
+  async function toggleMarketplaceSave(productId: string) {
+    try {
+      const { saved } = await authed<{ saved: boolean }>(`/marketplace/${productId}/save`, { method: "POST" });
+      setMarketplaceProducts((current) => current.map((product) => product.id === productId ? { ...product, savedByMe: saved } : product));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save product");
+    }
+  }
+
+  async function setMarketplaceStatus(productId: string, status: "ACTIVE" | "SOLD") {
+    try {
+      await authed(`/marketplace/${productId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      setMarketplaceProducts((current) => current.map((product) => product.id === productId ? { ...product, status } : product));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update product");
+    }
+  }
+
+  async function deleteMarketplaceProduct(productId: string) {
+    try {
+      await authed(`/marketplace/${productId}`, { method: "DELETE" });
+      setMarketplaceProducts((current) => current.filter((product) => product.id !== productId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete product");
+    }
+  }
+
   async function createEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -1301,9 +1330,43 @@ export default function Page() {
     }
   }
 
-  function openGroup(group: SocialGroup) {
+  async function openGroup(group: SocialGroup) {
     setSelectedGroup(group);
+    setGroupJoinRequests([]);
+    setGroupMembers([]);
     setView("groupDetail");
+    if (group.ownerId !== session?.user.id) return;
+    try {
+      const [requests, members] = await Promise.all([authed<GroupJoinRequest[]>(`/groups/${group.id}/requests`), authed<GroupMember[]>(`/groups/${group.id}/members`)]);
+      setGroupJoinRequests(requests);
+      setGroupMembers(members);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load group requests");
+    }
+  }
+
+  async function respondToGroupRequest(requestId: string, accept: boolean) {
+    if (!selectedGroup) return;
+    try {
+      await authed(`/groups/${selectedGroup.id}/requests/${requestId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ accept }),
+      });
+      setGroupJoinRequests((current) => current.filter((request) => request.id !== requestId));
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update group request");
+    }
+  }
+
+  async function moderateGroupMember(memberId: string, role?: "ADMIN" | "MEMBER") {
+    if (!selectedGroup) return;
+    try {
+      if (role) await authed(`/groups/${selectedGroup.id}/members/${memberId}`, { method: "PATCH", body: JSON.stringify({ role }) });
+      else await authed(`/groups/${selectedGroup.id}/members/${memberId}`, { method: "DELETE" });
+      setGroupMembers(await authed<GroupMember[]>(`/groups/${selectedGroup.id}/members`));
+      await refreshSocialData();
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not update member"); }
   }
 
   async function markNotificationsRead() {
@@ -1412,19 +1475,32 @@ export default function Page() {
     }
 
     const formElement = event.currentTarget;
-    const content = String(new FormData(formElement).get("content")).trim();
-    if (!content) {
+    const form = new FormData(formElement);
+    const content = String(form.get("content")).trim();
+    const mediaFile = form.get("mediaFile");
+    let mediaUrl = "";
+    let mediaType: "IMAGE" | "VIDEO" | undefined;
+    if (!content && !(mediaFile instanceof File && mediaFile.size > 0)) {
       return;
     }
 
-    await authed(`/messages/conversations/${activeConversation.id}`, {
-      method: "POST",
-      body: JSON.stringify({ content }),
-    });
-    formElement.reset();
-    setMessageDraft("");
-    setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
-    setConversations(await authed<Conversation[]>("/messages/conversations"));
+    try {
+      if (mediaFile instanceof File && mediaFile.size > 0) {
+        const uploaded = await uploadMedia(mediaFile);
+        mediaUrl = uploaded.url;
+        mediaType = uploaded.mediaType;
+      }
+      await authed(`/messages/conversations/${activeConversation.id}`, {
+        method: "POST",
+        body: JSON.stringify({ content, mediaUrl: mediaUrl || undefined, mediaType }),
+      });
+      formElement.reset();
+      setMessageDraft("");
+      setDirectMessages(await authed<DirectMessage[]>(`/messages/conversations/${activeConversation.id}`));
+      setConversations(await authed<Conversation[]>("/messages/conversations"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send message");
+    }
   }
 
   async function startLive(title: string) {
@@ -1526,6 +1602,7 @@ export default function Page() {
           avatar: avatar || null,
           cover: cover || null,
           bio: String(form.get("bio")) || null,
+          profileVisibility: String(form.get("profileVisibility") || "PUBLIC"),
         }),
       });
 
@@ -1552,6 +1629,28 @@ export default function Page() {
       await refreshSocialData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function cancelFriendRequest(requestId: string) {
+    setError("");
+    try {
+      await authed(`/friends/requests/${requestId}`, { method: "DELETE" });
+      setPublicProfile((current) => current ? { ...current, relationship: "NONE", relationshipRequestId: null } : current);
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not cancel friend request");
+    }
+  }
+
+  async function unfriend(userId: string) {
+    setError("");
+    try {
+      await authed(`/friends/users/${userId}`, { method: "DELETE" });
+      setPublicProfile((current) => current?.user.id === userId ? { ...current, relationship: "NONE" } : current);
+      await refreshSocialData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove friend");
     }
   }
 
@@ -1601,16 +1700,27 @@ export default function Page() {
 
   async function toggleReaction(postId: string, reactionType = "LIKE") {
     setError("");
-
+    const previous = posts;
+    setPosts((current) => current.map((post) => {
+      if (post.id !== postId) return post;
+      const removing = post.reactionTypeByMe === reactionType;
+      const priorType = post.reactionTypeByMe;
+      const summary = post.reactionSummary.map((item) => item.type === priorType ? { ...item, count: Math.max(0, item.count - 1) } : item.count > 0 ? item : null).filter((item): item is { type: string; count: number } => item !== null);
+      if (!removing) {
+        const existing = summary.find((item) => item.type === reactionType);
+        if (existing) existing.count += 1; else summary.push({ type: reactionType, count: 1 });
+      }
+      return { ...post, reactedByMe: !removing, reactionTypeByMe: removing ? null : reactionType as Post["reactionTypeByMe"], reactionCount: Math.max(0, post.reactionCount + (removing ? -1 : priorType ? 0 : 1)), reactionSummary: summary };
+    }));
     try {
       await authed(`/posts/${postId}/reactions`, { method: "POST", body: JSON.stringify({ reactionType }) });
-      await refreshSocialData();
     } catch (err) {
+      setPosts(previous);
       setError(err instanceof Error ? err.message : "Request failed");
     }
   }
 
-  async function commentOnPost(event: FormEvent<HTMLFormElement>, postId: string) {
+  async function commentOnPost(event: FormEvent<HTMLFormElement>, postId: string, parentId?: string) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
@@ -1625,7 +1735,7 @@ export default function Page() {
     try {
       await authed(`/posts/${postId}/comments`, {
         method: "POST",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, parentId }),
       });
       formElement.reset();
       await refreshSocialData();
@@ -1960,10 +2070,14 @@ export default function Page() {
             profile={publicProfile}
             viewerId={session.user.id}
             onAddFriend={addFriend}
+            onAcceptRequest={(id) => respondToRequest(id, "accept")}
             onBlock={blockUser}
+            onCancelRequest={cancelFriendRequest}
             onLiveToken={getLiveToken}
             onOpenProfile={openUserProfile}
+            onRejectRequest={(id) => respondToRequest(id, "reject")}
             onSendLiveMessage={sendLiveMessage}
+            onUnfriend={unfriend}
           />
         ) : view === "friends" ? (
           <FriendsPage
@@ -1975,6 +2089,7 @@ export default function Page() {
             onMessage={openConversation}
             onOpenProfile={openUserProfile}
             onReject={(id) => respondToRequest(id, "reject")}
+            onRemove={unfriend}
           />
         ) : view === "messages" ? (
           <MessagesPage
@@ -1985,9 +2100,11 @@ export default function Page() {
             messages={directMessages}
             viewerId={session.user.id}
             onDraftChange={setMessageDraft}
+            onTyping={notifyTyping}
             onOpenConversation={openConversation}
             onSelectConversation={selectConversation}
             onSendMessage={sendDirectMessage}
+            peerTyping={typingConversationId === activeConversation?.id}
           />
         ) : view === "search" ? (
           <SearchPage
@@ -2029,7 +2146,10 @@ export default function Page() {
             products={marketplaceProducts}
             viewerId={session.user.id}
             onContactSeller={openConversation}
+            onDelete={deleteMarketplaceProduct}
             onOpenProfile={openUserProfile}
+            onSave={toggleMarketplaceSave}
+            onSetStatus={setMarketplaceStatus}
             onSubmit={createMarketplaceProduct}
           />
         ) : view === "events" ? (
@@ -2061,6 +2181,10 @@ export default function Page() {
             onReportPost={setReportTarget}
             onShare={setShareTarget}
             onToggleJoin={toggleGroupJoin}
+            joinRequests={groupJoinRequests}
+            onRespondRequest={respondToGroupRequest}
+            members={groupMembers}
+            onModerateMember={moderateGroupMember}
           />
         ) : view === "pages" ? (
           <PagesPage
@@ -2146,6 +2270,7 @@ export default function Page() {
                 />
               ))
             )}
+            {feedNextCursor && <button className={`${secondaryButtonClass} w-full`} disabled={loadingMorePosts} type="button" onClick={() => void loadMorePosts}>{loadingMorePosts ? "Loading…" : "Load more posts"}</button>}
           </section>
         )}
 
@@ -3273,7 +3398,7 @@ function FeedPost({
 }: {
   post: Post;
   viewerId: string;
-  onComment: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onComment: (event: FormEvent<HTMLFormElement>, postId: string, parentId?: string) => void;
   onCommentDelete: (commentId: string) => void;
   onCommentEdit: (comment: Post["comments"][number]) => void;
   onDelete: (postId: string) => void;
@@ -3286,6 +3411,7 @@ function FeedPost({
   const canManage = post.author.id === viewerId;
   const [commentOpen, setCommentOpen] = useState(false);
   const [reactionOpen, setReactionOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const reactionPressTimer = useRef<number | null>(null);
   const suppressReactionClick = useRef(false);
   const commentLabel = post.commentCount === 1 ? "comment" : "comments";
@@ -3381,7 +3507,7 @@ function FeedPost({
         </p>
       )}
       <div className="mt-3 flex justify-between border-t border-[#eee8dc] pt-3 text-xs text-[#6d746f]">
-        <span>{post.reactionCount} reactions</span>
+        <span>{post.reactionSummary.map((reaction) => ({ LIKE: "👍", LOVE: "❤️", CARE: "🤗", HAHA: "😆", WOW: "😮", SAD: "😢", ANGRY: "😡" }[reaction.type] ?? "👍")).join("")} {post.reactionCount} reactions</span>
         <span>{post.shareCount} shares</span>
         <button
           className="font-semibold hover:underline"
@@ -3434,8 +3560,9 @@ function FeedPost({
         </button>
       </div>
       <div className="mt-3 space-y-3">
-        {post.comments.map((comment) => (
-          <div className="flex gap-2" key={comment.id}>
+        {post.comments.filter((comment) => !comment.parentId).map((comment) => (
+          <div className="space-y-2" key={comment.id}>
+          <div className="flex gap-2">
             <button type="button" onClick={() => onOpenProfile(comment.author.id)}>
               <Avatar name={comment.author.name} src={comment.author.avatar} size="sm" />
             </button>
@@ -3447,6 +3574,7 @@ function FeedPost({
                 {comment.signerAddress.slice(-4)}
               </p>
             </div>
+            <button className="self-end text-xs font-bold text-[#1877f2]" type="button" onClick={() => { setCommentOpen(true); setReplyingTo(comment.id); }}>Reply</button>
             {comment.author.id === viewerId && (
               <ActionMenu
                 items={[
@@ -3467,14 +3595,16 @@ function FeedPost({
               />
             )}
           </div>
+          {post.comments.filter((reply) => reply.parentId === comment.id).map((reply) => <div className="ml-10 flex gap-2" key={reply.id}><button type="button" onClick={() => onOpenProfile(reply.author.id)}><Avatar name={reply.author.name} src={reply.author.avatar} size="sm" /></button><div className="rounded-xl bg-[#f4efe5] px-3 py-2"><p className="text-xs font-semibold">{reply.author.name}</p><p className="text-sm">{reply.content}</p></div></div>)}
+          </div>
         ))}
         {commentOpen && (
-          <form className="flex gap-2" onSubmit={(event) => onComment(event, post.id)}>
+          <form className="flex gap-2" onSubmit={(event) => { onComment(event, post.id, replyingTo ?? undefined); setReplyingTo(null); }}>
             <input
               autoFocus
               className="min-w-0 flex-1 rounded-xl border border-[#ded7c9] bg-[#fffdf8] px-4 py-2 text-sm outline-none focus:border-[#49625b] focus:ring-2 focus:ring-[#49625b]/10"
               name="comment"
-              placeholder="Write a comment..."
+              placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
             />
             <button className={secondaryButtonClass} type="submit">
               Send
@@ -3612,6 +3742,7 @@ function FriendsPage({
   onAccept,
   onAdd,
   onReject,
+  onRemove,
 }: {
   friends: User[];
   onMessage: (userId: string) => void;
@@ -3621,6 +3752,7 @@ function FriendsPage({
   onAccept: (id: string) => void;
   onAdd: (id: string) => void;
   onReject: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   return (
     <section className="nexo-friends-page space-y-9 p-5 sm:p-8">
@@ -3669,7 +3801,7 @@ function FriendsPage({
             {friends.map((friend) => (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-[#ded7c9] bg-white p-3 shadow-sm" key={friend.id}>
                 <PersonRow user={friend} onOpenProfile={onOpenProfile} />
-                <button className={secondaryButtonClass} type="button" onClick={() => onMessage(friend.id)}>Message</button>
+                <div className="flex gap-2"><button className={secondaryButtonClass} type="button" onClick={() => onMessage(friend.id)}>Message</button><button className={secondaryButtonClass} type="button" onClick={() => onRemove(friend.id)}>Remove</button></div>
               </div>
             ))}
           </div>
@@ -3708,9 +3840,11 @@ function MessagesPage({
   friends,
   messages,
   onDraftChange,
+  onTyping,
   onOpenConversation,
   onSelectConversation,
   onSendMessage,
+  peerTyping,
   viewerId,
 }: {
   activeConversation: Conversation | null;
@@ -3719,9 +3853,11 @@ function MessagesPage({
   friends: User[];
   messages: DirectMessage[];
   onDraftChange: (draft: string) => void;
+  onTyping: () => void;
   onOpenConversation: (userId: string) => void;
   onSelectConversation: (conversation: Conversation) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  peerTyping: boolean;
   viewerId: string;
 }) {
   return (
@@ -3773,7 +3909,7 @@ function MessagesPage({
               <Avatar name={activeConversation.peerName} src={activeConversation.peerAvatar} size="sm" />
               <div>
                 <h2 className="font-black">{activeConversation.peerName}</h2>
-                <p className="text-xs text-[#6d746f]">Signed private chat</p>
+                <p className="text-xs text-[#6d746f]">{peerTyping ? "Typing…" : "Signed private chat"}</p>
               </div>
             </header>
             <div className="flex-1 space-y-3 overflow-y-auto bg-[#f7f5ef] p-4">
@@ -3783,6 +3919,11 @@ function MessagesPage({
                   <div className={`flex ${mine ? "justify-end" : "justify-start"}`} key={message.id}>
                     <div className={`max-w-[72%] rounded-2xl px-4 py-2 text-sm shadow-sm ${mine ? "bg-[#17211f] text-white" : "bg-white text-[#17211f]"}`}>
                       <p>{message.content}</p>
+                      {message.mediaUrl && (message.mediaType === "VIDEO" ? (
+                        <video className="mt-2 max-h-72 w-full rounded-xl" controls src={mediaSrc(message.mediaUrl)} />
+                      ) : (
+                        <img alt="Message attachment" className="mt-2 max-h-72 w-full rounded-xl object-cover" src={mediaSrc(message.mediaUrl)} />
+                      ))}
                       {message.signerAddress && (
                         <p className={`mt-1 text-[10px] ${mine ? "text-white/60" : "text-[#6d746f]"}`}>
                           firmado {message.signerAddress.slice(0, 6)}...{message.signerAddress.slice(-4)}
@@ -3795,10 +3936,14 @@ function MessagesPage({
               })}
             </div>
             <form className="flex gap-2 border-t border-[#eee8dc] p-3" onSubmit={onSendMessage}>
+              <label className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-[#e7f3ff] text-lg text-[#1877f2] hover:bg-[#d8ebff]" title="Attach image or video">
+                <span aria-hidden="true">＋</span>
+                <input accept="image/*,video/*" className="sr-only" name="mediaFile" type="file" />
+              </label>
               <input
                 className="min-w-0 flex-1 rounded-full border border-[#ded7c9] px-4 py-3 text-sm outline-none focus:border-[#49625b]"
                 name="content"
-                onChange={(event) => onDraftChange(event.currentTarget.value)}
+                onChange={(event) => { onDraftChange(event.currentTarget.value); onTyping(); }}
                 placeholder="Write a message..."
                 value={draft}
               />
@@ -4030,14 +4175,20 @@ function EventsPage({
 function MarketplacePage({
   loading,
   onContactSeller,
+  onDelete,
   onOpenProfile,
+  onSave,
+  onSetStatus,
   onSubmit,
   products,
   viewerId,
 }: {
   loading: boolean;
   onContactSeller: (sellerId: string, draft?: string) => void;
+  onDelete: (productId: string) => void;
   onOpenProfile: (userId: string) => void;
+  onSave: (productId: string) => void;
+  onSetStatus: (productId: string, status: "ACTIVE" | "SOLD") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   products: MarketplaceProduct[];
   viewerId: string;
@@ -4122,12 +4273,12 @@ function MarketplacePage({
           )}
         </div>
       </div>
-      {selectedProduct && <MarketplaceDetailModal product={selectedProduct} viewerId={viewerId} onClose={() => setSelectedProduct(null)} onContactSeller={onContactSeller} onOpenProfile={onOpenProfile} />}
+      {selectedProduct && <MarketplaceDetailModal product={selectedProduct} viewerId={viewerId} onClose={() => setSelectedProduct(null)} onContactSeller={onContactSeller} onDelete={(id) => { onDelete(id); setSelectedProduct(null); }} onOpenProfile={onOpenProfile} onSave={(id) => { onSave(id); setSelectedProduct((current) => current ? { ...current, savedByMe: !current.savedByMe } : current); }} onSetStatus={(id, status) => { onSetStatus(id, status); setSelectedProduct((current) => current ? { ...current, status } : current); }} />}
     </section>
   );
 }
 
-function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, product, viewerId }: { onClose: () => void; onContactSeller: (sellerId: string, draft?: string) => void; onOpenProfile: (userId: string) => void; product: MarketplaceProduct; viewerId: string }) {
+function MarketplaceDetailModal({ onClose, onContactSeller, onDelete, onOpenProfile, onSave, onSetStatus, product, viewerId }: { onClose: () => void; onContactSeller: (sellerId: string, draft?: string) => void; onDelete: (productId: string) => void; onOpenProfile: (userId: string) => void; onSave: (productId: string) => void; onSetStatus: (productId: string, status: "ACTIVE" | "SOLD") => void; product: MarketplaceProduct; viewerId: string }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-3 sm:p-6" role="presentation" onMouseDown={onClose}>
       <section aria-modal="true" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl overflow-y-auto rounded-xl bg-white shadow-2xl" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
@@ -4145,6 +4296,7 @@ function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, produ
               <h2 className="mt-2 break-words text-2xl font-bold text-[#050505]">{product.title}</h2>
               <p className="mt-2 text-sm text-[#65676b]">{product.location}</p>
               <p className="mt-3 inline-flex rounded-full bg-[#f0f2f5] px-3 py-1 text-xs font-bold text-[#53645f]">{product.category}</p>
+              {product.status === "SOLD" && <p className="mt-3 inline-flex rounded-full bg-[#fee2e2] px-3 py-1 text-xs font-bold text-red-700">Sold</p>}
             </div>
             {product.description && <div className="p-5"><h3 className="text-base font-bold text-[#050505]">Description</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#1c1e21]">{product.description}</p></div>}
             <div className="p-5">
@@ -4153,7 +4305,8 @@ function MarketplaceDetailModal({ onClose, onContactSeller, onOpenProfile, produ
                 <Avatar name={product.sellerName} src={product.sellerAvatar} size="md" />
                 <span className="min-w-0"><span className="block truncate font-bold text-[#050505]">{product.sellerName}</span><span className="block text-sm text-[#65676b]">View profile</span></span>
               </button>
-              {product.sellerId !== viewerId && <button className="mt-4 w-full rounded-lg bg-[#1877f2] px-4 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" type="button" onClick={() => { onClose(); onContactSeller(product.sellerId, `Hi, is \"${product.title}\" still available?`); }}>Message seller</button>}
+              {product.sellerId !== viewerId && <><button className="mt-4 w-full rounded-lg bg-[#1877f2] px-4 py-3 text-sm font-bold text-white hover:bg-[#166fe5]" disabled={product.status === "SOLD"} type="button" onClick={() => { onClose(); onContactSeller(product.sellerId, `Hi, is \"${product.title}\" still available?`); }}>Message seller</button><button className="mt-2 w-full rounded-lg bg-[#f0f2f5] px-4 py-3 text-sm font-bold text-[#1c1e21]" type="button" onClick={() => onSave(product.id)}>{product.savedByMe ? "Unsave" : "Save item"}</button></>}
+              {product.sellerId === viewerId && <><button className="mt-4 w-full rounded-lg bg-[#f0f2f5] px-4 py-3 text-sm font-bold text-[#1c1e21]" type="button" onClick={() => onSetStatus(product.id, product.status === "ACTIVE" ? "SOLD" : "ACTIVE")}>{product.status === "ACTIVE" ? "Mark as sold" : "Mark as available"}</button><button className="mt-2 w-full rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-700" type="button" onClick={() => onDelete(product.id)}>Delete listing</button></>}
             </div>
           </aside>
         </div>
@@ -4249,8 +4402,8 @@ function GroupCard({
         <p className="mt-1 text-xs font-black uppercase text-[#b8741a]">{group.privacy}</p>
         {group.description && <p className="mt-2 line-clamp-3 text-sm text-[#6d746f]">{group.description}</p>}
         <p className="mt-3 text-xs text-[#8a8f8b]">{group.memberCount} miembros · {group.ownerName}</p>
-        <button className={`${group.joinedByMe ? secondaryButtonClass : primaryButtonClass} mt-3 w-full`} type="button" onClick={() => onToggleJoin(group)}>
-          {group.joinedByMe ? "Miembro" : "Unirme"}
+        <button className={`${group.joinedByMe || group.requestPendingByMe ? secondaryButtonClass : primaryButtonClass} mt-3 w-full`} type="button" disabled={group.requestPendingByMe} onClick={() => onToggleJoin(group)}>
+          {group.joinedByMe ? "Miembro" : group.requestPendingByMe ? "Solicitud enviada" : group.privacy === "PRIVATE" ? "Solicitar unirme" : "Unirme"}
         </button>
       </div>
     </article>
@@ -4271,6 +4424,10 @@ function GroupDetail({
   onReportPost,
   onShare,
   onToggleJoin,
+  joinRequests,
+  onRespondRequest,
+  members,
+  onModerateMember,
   posts,
   viewerId,
 }: {
@@ -4278,7 +4435,7 @@ function GroupDetail({
   onBack: () => void;
   onCommentDelete: (commentId: string) => void;
   onCommentEdit: (comment: Post["comments"][number]) => void;
-  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string, parentId?: string) => void;
   onCreatePost: (event: FormEvent<HTMLFormElement>) => void;
   onDeletePost: (postId: string) => void;
   onEditPost: (post: Post) => void;
@@ -4287,6 +4444,10 @@ function GroupDetail({
   onReportPost: (post: Post) => void;
   onShare: (post: Post) => void;
   onToggleJoin: (group: SocialGroup) => void;
+  joinRequests: GroupJoinRequest[];
+  onRespondRequest: (requestId: string, accept: boolean) => void;
+  members: GroupMember[];
+  onModerateMember: (memberId: string, role?: "ADMIN" | "MEMBER") => void;
   posts: Post[];
   viewerId: string;
 }) {
@@ -4302,12 +4463,30 @@ function GroupDetail({
               <p className="mt-1 text-sm text-[#6d746f]">{group.memberCount} miembros · {group.privacy}</p>
               {group.description && <p className="mt-3 max-w-3xl text-sm leading-6 text-[#53645f]">{group.description}</p>}
             </div>
-            <button className={group.joinedByMe ? secondaryButtonClass : primaryButtonClass} type="button" onClick={() => onToggleJoin(group)}>
-              {group.joinedByMe ? "Miembro" : "Unirme"}
+            <button className={group.joinedByMe || group.requestPendingByMe ? secondaryButtonClass : primaryButtonClass} type="button" disabled={group.requestPendingByMe} onClick={() => onToggleJoin(group)}>
+              {group.joinedByMe ? "Miembro" : group.requestPendingByMe ? "Solicitud enviada" : group.privacy === "PRIVATE" ? "Solicitar unirme" : "Unirme"}
             </button>
           </div>
         </div>
       </div>
+      {group.ownerId === viewerId && joinRequests.length > 0 && (
+        <section className="rounded-2xl border border-[#ded7c9] bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black">Solicitudes para unirse</h2>
+          <div className="mt-4 space-y-3">
+            {joinRequests.map((request) => (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f7f4ee] p-3" key={request.id}>
+                <Avatar name={request.requesterName} src={request.requesterAvatar} size="md" />
+                <span className="min-w-32 flex-1 text-sm font-bold">{request.requesterName}</span>
+                <button className={primaryButtonClass} type="button" onClick={() => onRespondRequest(request.id, true)}>Aceptar</button>
+                <button className={secondaryButtonClass} type="button" onClick={() => onRespondRequest(request.id, false)}>Eliminar</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {group.ownerId === viewerId && members.length > 0 && (
+        <section className="rounded-2xl border border-[#ded7c9] bg-white p-5 shadow-sm"><h2 className="text-lg font-black">Miembros</h2><div className="mt-3 space-y-2">{members.map((member) => <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f7f4ee] p-3" key={member.userId}><Avatar name={member.name} src={member.avatar} size="sm" /><span className="min-w-28 flex-1 text-sm font-bold">{member.name} · {member.role}</span>{member.userId !== viewerId && <><button className={secondaryButtonClass} type="button" onClick={() => onModerateMember(member.userId, member.role === "ADMIN" ? "MEMBER" : "ADMIN")}>{member.role === "ADMIN" ? "Quitar admin" : "Hacer admin"}</button><button className={secondaryButtonClass} type="button" onClick={() => onModerateMember(member.userId)}>Expulsar</button></>}</div>)}</div></section>
+      )}
       {group.joinedByMe && <GroupPostComposer group={group} onSubmit={onCreatePost} />}
       {posts.length === 0 ? (
         <p className="rounded-2xl border border-[#ded7c9] bg-white p-8 text-center text-sm text-[#6d746f] shadow-sm">This group has no posts yet.</p>
@@ -4506,7 +4685,7 @@ function PageDetail({
   onBack: () => void;
   onCommentDelete: (commentId: string) => void;
   onCommentEdit: (comment: Post["comments"][number]) => void;
-  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string) => void;
+  onCommentPost: (event: FormEvent<HTMLFormElement>, postId: string, parentId?: string) => void;
   onCreatePost: (event: FormEvent<HTMLFormElement>) => void;
   onDeletePost: (postId: string) => void;
   onEditPost: (post: Post) => void;
@@ -5348,6 +5527,9 @@ function ProfilePage({
               Bio
               <textarea className={`${inputClass} min-h-28 resize-none`} defaultValue={session.user.bio ?? ""} name="bio" />
             </label>
+            <label className="mt-3 block text-sm font-bold text-[#050505]">Profile visibility
+              <select className={inputClass} defaultValue={session.user.profileVisibility ?? "PUBLIC"} name="profileVisibility"><option value="PUBLIC">Public</option><option value="FRIENDS">Friends only</option></select>
+            </label>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className={secondaryButtonClass}>
                 Upload profile photo
@@ -5469,29 +5651,29 @@ function PublicProfilePage({
   liveMessages,
   profile,
   viewerId,
+  onAcceptRequest,
   onAddFriend,
   onBlock,
+  onCancelRequest,
   onLiveToken,
   onOpenProfile,
+  onRejectRequest,
   onSendLiveMessage,
+  onUnfriend,
 }: {
   liveMessages: Record<string, LiveChatMessage[]>;
   profile: PublicProfile;
   viewerId: string;
+  onAcceptRequest: (requestId: string) => void;
   onAddFriend: (userId: string) => void;
   onBlock: (userId: string) => void;
+  onCancelRequest: (requestId: string) => void;
   onLiveToken: (id: string) => Promise<LiveKitConnection>;
   onOpenProfile: (userId: string) => void;
+  onRejectRequest: (requestId: string) => void;
   onSendLiveMessage: (event: FormEvent<HTMLFormElement>, liveId: string) => void;
+  onUnfriend: (userId: string) => void;
 }) {
-  const relationshipText = {
-    SELF: "Your profile",
-    FRIEND: "Friends",
-    REQUEST_SENT: "Request sent",
-    REQUEST_RECEIVED: "Sent you a request",
-    NONE: "Add friend",
-  }[profile.relationship];
-
   return (
     <section className="mx-auto w-full max-w-[1100px] space-y-4">
       <div className="overflow-hidden rounded-b-lg bg-white shadow-sm">
@@ -5506,14 +5688,10 @@ function PublicProfilePage({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                className={profile.relationship === "NONE" ? "rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white" : "rounded-md bg-[#e4e6eb] px-5 py-2.5 text-sm font-bold text-[#050505]"}
-                disabled={profile.relationship !== "NONE"}
-                type="button"
-                onClick={() => onAddFriend(profile.user.id)}
-              >
-                {relationshipText}
-              </button>
+              {profile.relationship === "NONE" && <button className="rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white" type="button" onClick={() => onAddFriend(profile.user.id)}>Add friend</button>}
+              {profile.relationship === "FRIEND" && <button className="rounded-md bg-[#e4e6eb] px-5 py-2.5 text-sm font-bold text-[#050505]" type="button" onClick={() => onUnfriend(profile.user.id)}>Unfriend</button>}
+              {profile.relationship === "REQUEST_SENT" && profile.relationshipRequestId && <button className="rounded-md bg-[#e4e6eb] px-5 py-2.5 text-sm font-bold text-[#050505]" type="button" onClick={() => onCancelRequest(profile.relationshipRequestId!)}>Cancel request</button>}
+              {profile.relationship === "REQUEST_RECEIVED" && profile.relationshipRequestId && <><button className="rounded-md bg-[#1877f2] px-5 py-2.5 text-sm font-bold text-white" type="button" onClick={() => onAcceptRequest(profile.relationshipRequestId!)}>Confirm</button><button className="rounded-md bg-[#e4e6eb] px-5 py-2.5 text-sm font-bold text-[#050505]" type="button" onClick={() => onRejectRequest(profile.relationshipRequestId!)}>Delete</button></>}
               {profile.relationship !== "SELF" && (
                 <button
                   className="rounded-md bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100"

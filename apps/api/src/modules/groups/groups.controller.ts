@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { GroupsService } from './groups.service';
 
@@ -15,6 +15,12 @@ class GroupDto {
   @ApiProperty({ example: '/media/cover.png', required: false })
   cover?: string;
 }
+
+class RespondGroupRequestDto {
+  @ApiProperty({ example: true })
+  accept: boolean;
+}
+class GroupMemberRoleDto { role: string; }
 
 @ApiTags('groups')
 @Controller('groups')
@@ -48,6 +54,37 @@ export class GroupsController {
   one(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) {
     return this.groupsService.one(this.bearer(authorization), id);
   }
+
+  @Get(':id/requests')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List pending group join requests for the owner' })
+  requests(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) {
+    return this.groupsService.requests(this.bearer(authorization), id);
+  }
+
+  @Patch(':id/requests/:requestId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Accept or decline a group join request' })
+  respondToRequest(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+    @Body() body: RespondGroupRequestDto,
+  ) {
+    return this.groupsService.respondToRequest(this.bearer(authorization), id, requestId, body.accept === true);
+  }
+
+  @Get(':id/members')
+  @ApiBearerAuth()
+  members(@Headers('authorization') authorization: string | undefined, @Param('id') id: string) { return this.groupsService.members(this.bearer(authorization), id); }
+
+  @Patch(':id/members/:memberId')
+  @ApiBearerAuth()
+  setMemberRole(@Headers('authorization') authorization: string | undefined, @Param('id') id: string, @Param('memberId') memberId: string, @Body() body: GroupMemberRoleDto) { return this.groupsService.setMemberRole(this.bearer(authorization), id, memberId, body.role); }
+
+  @Delete(':id/members/:memberId')
+  @ApiBearerAuth()
+  removeMember(@Headers('authorization') authorization: string | undefined, @Param('id') id: string, @Param('memberId') memberId: string) { return this.groupsService.removeMember(this.bearer(authorization), id, memberId); }
 
   @Post(':id/join')
   @ApiBearerAuth()
