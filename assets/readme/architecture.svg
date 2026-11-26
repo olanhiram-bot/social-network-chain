@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Nexo system map</title>
+  <desc id="desc">The Next.js web client talks to the NestJS API over REST and authenticated SSE; the API writes to PostgreSQL through Prisma and anchors signed actions on Ethereum Sepolia, where the client also manages identity with wagmi.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#4A6FA5"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="560" rx="24" fill="#030B2F"/>
+
+  <!-- header -->
+  <text x="64" y="62" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700" letter-spacing="2.4" fill="#3AEBAB">SYSTEM MAP</text>
+  <text x="1136" y="62" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#5F7BA8">pnpm workspaces · 5 packages · Vercel + Render</text>
+
+  <!-- client -->
+  <g id="client" transform="translate(64 100)">
+    <rect x="0" y="0" width="270" height="170" rx="14" fill="#071231" stroke="#223D64"/>
+    <text x="20" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#F6F6F7">apps/web</text>
+    <text x="20" y="52" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#7E93B8">Next.js 16 · React 19</text>
+    <text x="20" y="82" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">13 app views</text>
+    <text x="20" y="104" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">Reown AppKit + wagmi</text>
+    <text x="20" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">LiveKit client</text>
+    <text x="20" y="148" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">SSE EventSource</text>
+  </g>
+
+  <!-- gap 1: two-way -->
+  <path d="M334 160h76" stroke="#4A6FA5" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="374" y="150" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#7E93B8">REST+JWT</text>
+  <path d="M410 208h-76" stroke="#3AEBAB" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="374" y="230" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#3AEBAB">SSE events</text>
+
+  <!-- api -->
+  <g id="api" transform="translate(414 100)">
+    <rect x="0" y="0" width="390" height="170" rx="14" fill="#071231" stroke="#223D64"/>
+    <text x="20" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#F6F6F7">apps/api</text>
+    <text x="20" y="52" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#7E93B8">NestJS 11 · 15 modules · 89 routes</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10.5" fill="#8FBCAE">
+      <text x="20" y="80">auth</text><text x="86" y="80">wallets</text><text x="162" y="80">posts</text><text x="226" y="80">stories</text><text x="300" y="80">lives</text>
+      <text x="20" y="100">messages</text><text x="86" y="100">friends</text><text x="162" y="100">groups</text><text x="226" y="100">pages</text><text x="286" y="100">market</text>
+      <text x="20" y="120">events</text><text x="86" y="120">notifs</text><text x="162" y="120">search</text><text x="226" y="120">media</text><text x="286" y="120">realtime</text>
+    </g>
+    <text x="20" y="148" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11.5" fill="#7E93B8">SIWE nonce · rotating refresh · app signer</text>
+  </g>
+
+  <!-- gap 2 -->
+  <path d="M812 185h48" stroke="#4A6FA5" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="836" y="172" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#7E93B8">Prisma</text>
+
+  <!-- db -->
+  <g id="database" transform="translate(868 100)">
+    <rect x="0" y="0" width="268" height="170" rx="14" fill="#071231" stroke="#223D64"/>
+    <text x="20" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#F6F6F7">PostgreSQL</text>
+    <text x="20" y="52" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#7E93B8">Prisma · 32 models</text>
+    <text x="20" y="82" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">37 migrations</text>
+    <text x="20" y="104" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">SignedAction receipt log</text>
+    <text x="20" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">ChainAnchor status rows</text>
+    <text x="20" y="148" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5" fill="#C9CFDC">RLS-sealed public schema</text>
+  </g>
+
+  <!-- trust layer band -->
+  <g id="trust-layer" transform="translate(64 330)">
+    <rect x="0" y="0" width="1072" height="180" rx="16" fill="#08251F" stroke="#1E5C4B"/>
+    <text x="24" y="30" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" letter-spacing="1.8" fill="#3AEBAB">ETHEREUM SEPOLIA · 11155111 · 5 CONTRACTS</text>
+
+    <text x="24" y="60" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.6" fill="#8FBCAE">WRITTEN BY THE CLIENT (wagmi)</text>
+    <text x="24" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#F6F6F7">SocialIdRegistry <tspan fill="#7E93B8">0xA9bC…9472 · register / changeRecovery</tspan></text>
+    <text x="24" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#F6F6F7">SocialKeyRegistry <tspan fill="#7E93B8">addKey / removeKey (app signers)</tspan></text>
+    <text x="24" y="128" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#F6F6F7">SocialStorageRegistry <tspan fill="#7E93B8">0xb1De…319c · rent(id)</tspan></text>
+    <text x="24" y="150" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#F6F6F7">SocialBadge <tspan fill="#7E93B8">0x835B…8869 · non-transferable attestations</tspan></text>
+
+    <path x1="600" y1="28" x2="600" y2="156" stroke="#1E5C4B" stroke-width="1"/>
+
+    <text x="628" y="60" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.6" fill="#8FBCAE">WRITTEN BY THE API (app signer)</text>
+    <text x="628" y="88" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#F6F6F7">SocialActionRegistry.recordAction(<tspan fill="#3AEBAB">actionHash</tspan>, …)</text>
+    <text x="628" y="110" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#C9CFDC">Content and media never leave the database;</text>
+    <text x="628" y="130" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#C9CFDC">only the hash and its public metadata are anchored.</text>
+    <text x="628" y="156" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10.5" fill="#7E93B8">PENDING → SUBMITTED → CONFIRMED | FAILED</text>
+  </g>
+
+  <!-- arrows into the trust band -->
+  <path d="M190 270v56" stroke="#3AEBAB" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="204" y="296" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#3AEBAB">identity, keys, badges</text>
+  <path d="M1010 270v56" stroke="#3AEBAB" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="996" y="296" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#3AEBAB">anchor every signed action</text>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Nexo — onchain social network</title>
+  <desc id="desc">Nexo wordmark beside a signed-action pipeline: a post is signed by an app signer, then anchored by hash to a Sepolia registry.</desc>
+
+  <defs>
+    <radialGradient id="glow" cx="0.2" cy="0.1" r="0.9">
+      <stop offset="0" stop-color="#1756E3" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#1756E3" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#030B2F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.88" cy="0.9" r="0.6">
+      <stop offset="0" stop-color="#3AEBAB" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#3AEBAB" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="400" rx="24" fill="#030B2F"/>
+  <rect width="1200" height="400" rx="24" fill="url(#glow)"/>
+  <rect width="1200" height="400" rx="24" fill="url(#glow2)"/>
+
+  <!-- mark: identity hexagon with an inner link node -->
+  <g transform="translate(64 56)">
+    <path d="M18 0 34.4 9.5V28.5L18 38 1.6 28.5V9.5Z" fill="none" stroke="#3AEBAB" stroke-width="2"/>
+    <circle cx="18" cy="19" r="5.2" fill="#1756E3"/>
+    <path d="M18 13.8V8M18 24.2V30M23.2 19h5M12.8 19H8" stroke="#F6F6F7" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <g id="title-block" transform="translate(64 118)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="700" letter-spacing="2.6" fill="#3AEBAB">ONCHAIN SOCIAL NETWORK</text>
+    <text x="0" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="104" font-weight="800" letter-spacing="-4" fill="#F6F6F7">Nexo</text>
+    <text x="0" y="146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="21" fill="#AAACB8">Posts, communities, live video and marketplace in one place —</text>
+    <text x="0" y="176" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="21" fill="#AAACB8">wallet identity first, blockchain quietly underneath.</text>
+    <text x="0" y="228" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#5F7BA8">social-network-chain · Next.js · NestJS · Prisma · Solidity</text>
+  </g>
+
+  <!-- signed action pipeline -->
+  <g id="project-proof" transform="translate(676 52)">
+    <rect x="0" y="8" width="460" height="292" rx="18" fill="#071231" stroke="#223D64"/>
+    <text x="26" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="700" letter-spacing="1.6" fill="#5F7BA8">SIGNED ACTION</text>
+
+    <!-- step 1: post -->
+    <g transform="translate(26 58)">
+      <rect x="0" y="0" width="408" height="54" rx="12" fill="#0B1738" stroke="#1B3159"/>
+      <circle cx="22" cy="27" r="6" fill="#3AEBAB"/>
+      <text x="40" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#F6F6F7">post.create</text>
+      <text x="40" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11.5" fill="#7E93B8">audience: FRIENDS · media: video</text>
+    </g>
+    <path d="M230 116v10" stroke="#2B4472" stroke-width="1.5"/><path d="M225 122l5 6 5-6" fill="none" stroke="#2B4472" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- step 2: signer -->
+    <g transform="translate(26 134)">
+      <rect x="0" y="0" width="408" height="54" rx="12" fill="#0B1738" stroke="#1B3159"/>
+      <circle cx="22" cy="27" r="6" fill="#1756E3"/>
+      <text x="40" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#F6F6F7">app signer signs the payload</text>
+      <text x="40" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11.5" fill="#7E93B8">0x7a91…c41f · sig 0x3eb1…9f0c</text>
+    </g>
+    <path d="M230 192v10" stroke="#2B4472" stroke-width="1.5"/><path d="M225 198l5 6 5-6" fill="none" stroke="#2B4472" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- step 3: anchor -->
+    <g transform="translate(26 210)">
+      <rect x="0" y="0" width="408" height="62" rx="12" fill="#0B1738" stroke="#1B3159"/>
+      <rect x="0" y="0" width="4" height="62" rx="2" fill="#3AEBAB"/>
+      <circle cx="22" cy="27" r="6" fill="#3AEBAB"/>
+      <text x="40" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#F6F6F7">SocialActionRegistry.recordAction</text>
+      <text x="40" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11.5" fill="#7E93B8">0x2eCD…6d06 · Sepolia 11155111</text>
+      <text x="40" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11.5" fill="#3AEBAB">tx 0x9dC4…e21 · CONFIRMED</text>
+    </g>
+  </g>
+</svg>
